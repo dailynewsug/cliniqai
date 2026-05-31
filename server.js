@@ -31,7 +31,7 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { messages, system } = req.body;
     const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       max_tokens: 1500,
       messages: [
         { role: 'system', content: system },
@@ -98,7 +98,7 @@ ANALYSIS INSTRUCTIONS:
         : `Scanned PDF "${fileName}" — text not extractable. Use medical knowledge based on filename and context.`;
 
       const response = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 2000,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -140,7 +140,7 @@ ANALYSIS INSTRUCTIONS:
       } catch (visionError) {
         console.error('Vision error:', visionError.message);
         const fallback = await groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-8b-instant',
           max_tokens: 1500,
           messages: [
             { role: 'system', content: systemPrompt },
@@ -167,3 +167,10 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`MedVise server running on port ${PORT}`);
 });
+
+// Keep server alive — ping every 14 minutes
+setInterval(() => {
+  fetch(`https://cliniqai-server.onrender.com/`)
+    .then(() => console.log('Server keep-alive ping sent'))
+    .catch(() => console.log('Keep-alive ping failed'));
+}, 14 * 60 * 1000);

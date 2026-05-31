@@ -53,9 +53,21 @@ function formatMarkdown(text) {
 }
 
 function TypingIndicator() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
   return (
-    <div className="typing-indicator">
-      <span></span><span></span><span></span>
+    <div className="typing-wrap">
+      <div className="typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+      {seconds >= 5 && (
+        <div className="typing-msg">
+          {seconds < 15 ? "Analyzing..." : seconds < 30 ? "Almost ready..." : "Processing complex query..."}
+        </div>
+      )}
     </div>
   );
 }
@@ -674,7 +686,10 @@ export default function MedVise() {
         }
 
         /* TYPING */
-        .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+        .typing-wrap { display: flex; flex-direction: column; gap: 6px; }
+.typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing-msg { font-size: 10px; color: var(--text3); animation: fadein 0.5s ease; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
         .typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
