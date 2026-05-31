@@ -53,9 +53,19 @@ function formatMarkdown(text) {
 }
 
 function TypingIndicator() {
-  const [seconds, setSeconds] = useState(0);
+  const [msg, setMsg] = useState("Thinking...");
   useEffect(() => {
-    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
+    const msgs = [
+      "Thinking...",
+      "Searching clinical knowledge...",
+      "Cross-referencing guidelines...",
+      "Formulating response..."
+    ];
+    let i = 0;
+    const timer = setInterval(() => {
+      i = (i + 1) % msgs.length;
+      setMsg(msgs[i]);
+    }, 2000);
     return () => clearInterval(timer);
   }, []);
   return (
@@ -63,11 +73,7 @@ function TypingIndicator() {
       <div className="typing-indicator">
         <span></span><span></span><span></span>
       </div>
-      {seconds >= 5 && (
-        <div className="typing-msg">
-          {seconds < 15 ? "Analyzing..." : seconds < 30 ? "Almost ready..." : "Processing complex query..."}
-        </div>
-      )}
+      <div className="typing-msg">{msg}</div>
     </div>
   );
 }
@@ -122,6 +128,11 @@ export default function MedVise() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+  // Pre-warm server on page load
+  useEffect(() => {
+    fetch("https://cliniqai-server.onrender.com/")
+      .catch(() => {});
+  }, []);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];

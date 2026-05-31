@@ -32,7 +32,7 @@ app.post('/api/chat', async (req, res) => {
     const { messages, system } = req.body;
     const response = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
-      max_tokens: 1500,
+      max_tokens: 1200,
       messages: [
         { role: 'system', content: system },
         ...messages
@@ -99,7 +99,7 @@ ANALYSIS INSTRUCTIONS:
 
       const response = await groq.chat.completions.create({
         model: 'llama-3.1-8b-instant',
-        max_tokens: 2000,
+        max_tokens: 1200,
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -120,7 +120,7 @@ ANALYSIS INSTRUCTIONS:
       try {
         const response = await groq.chat.completions.create({
           model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-          max_tokens: 2000,
+          max_tokens: 1200,
           messages: [
             { role: 'system', content: systemPrompt },
             {
@@ -141,7 +141,7 @@ ANALYSIS INSTRUCTIONS:
         console.error('Vision error:', visionError.message);
         const fallback = await groq.chat.completions.create({
           model: 'llama-3.1-8b-instant',
-          max_tokens: 1500,
+          max_tokens: 1200,
           messages: [
             { role: 'system', content: systemPrompt },
             {
