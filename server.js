@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages, system } = req.body;
+
     const response = await groq.chat.completions.create({
       model: 'gemma2-9b-it',
       max_tokens: 1200,
@@ -38,19 +39,10 @@ app.post('/api/chat', async (req, res) => {
         ...messages
       ]
     });
-    let aiText = response.choices[0]?.message?.content || 'No response.';
 
-    // Only remove the specific flashcard line — nothing else
-    aiText = aiText.replace(/^.*FRONT:.*BACK:.*$/gim, '');
-    aiText = aiText.replace(/^📇.*$/gim, '');
-    aiText = aiText.trim();
-
-    // Safety check — if response is too short something went wrong
-    if (!aiText || aiText.length < 20) {
-      aiText = response.choices[0]?.message?.content || 'No response.';
-    }
-
+    const aiText = response.choices[0]?.message?.content || 'No response.';
     res.json({ content: [{ type: 'text', text: aiText }] });
+
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -70,15 +62,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       'Please provide a comprehensive medical summary and analysis.';
 
     const systemPrompt = `${system || 'You are MedVise, an advanced clinical intelligence assistant.'}
-
-ANALYSIS INSTRUCTIONS:
-- Analyze content carefully and thoroughly
-- Cross-reference with Harrison's, Robbins, Goodman & Gilman, Gray's Anatomy
-- Cross-reference with WHO, CDC, ACC/AHA, IDSA clinical guidelines
-- Structure response with ## headers and bullet points
-- Highlight key diagnoses, treatments, mechanisms, clinical pearls
-- Flag anything contradicting current evidence-based guidelines
-- End with educational disclaimer`;
+Cross-reference with Harrison's, Robbins, Goodman & Gilman, WHO, CDC, ACC/AHA guidelines.
+Structure response with ## headers and bullet points.
+End with educational disclaimer.`;
 
     if (mimeType === 'application/pdf') {
       let extractedText = '';
@@ -109,7 +95,7 @@ ANALYSIS INSTRUCTIONS:
         : `Scanned PDF "${fileName}" — text not extractable. Use medical knowledge based on filename and context.`;
 
       const response = await groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
+        model: 'gemma2-9b-it',
         max_tokens: 1200,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -151,13 +137,13 @@ ANALYSIS INSTRUCTIONS:
       } catch (visionError) {
         console.error('Vision error:', visionError.message);
         const fallback = await groq.chat.completions.create({
-          model: 'llama-3.1-8b-instant',
+          model: 'gemma2-9b-it',
           max_tokens: 1200,
           messages: [
             { role: 'system', content: systemPrompt },
             {
               role: 'user',
-              content: `Medical image "${fileName}" uploaded. USER REQUEST: "${userQuestion}". Provide clinical information about what this image type typically shows and what to look for.`
+              content: `Medical image "${fileName}" uploaded. USER REQUEST: "${userQuestion}". Provide clinical information about what this image type typically shows.`
             }
           ]
         });
@@ -179,9 +165,9 @@ app.listen(PORT, () => {
   console.log(`MedVise server running on port ${PORT}`);
 });
 
-// Keep server alive — ping every 14 minutes
+// Keep server alive
 setInterval(() => {
   fetch(`https://cliniqai-server.onrender.com/`)
-    .then(() => console.log('Server keep-alive ping sent'))
-    .catch(() => console.log('Keep-alive ping failed'));
+    .then(() => console.log('Keep-alive ping'))
+    .catch(() => {});
 }, 14 * 60 * 1000);
