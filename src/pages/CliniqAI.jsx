@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import Flashcard from "../components/Flashcard";
 
 const SPECIALTIES = [
   "General", "Cardiology", "Neurology", "Pharmacology",
@@ -96,25 +96,32 @@ function TypingIndicator() {
   );
 }
 
-function MessageBlock({ msg }) {
+function MessageBlock({ msg, showFlashcard }) {
   const isUser = msg.role === "user";
   return (
-    <div className={`message-row ${isUser ? "user-row" : "ai-row"}`}>
-      {!isUser && <div className="avatar ai-avatar">✦</div>}
-      <div className={`message-bubble ${isUser ? "user-bubble" : "ai-bubble"}`}>
-        {isUser
-          ? <p>{msg.content}</p>
-          : <div className="ai-content"
-              dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
-        }
-        {msg.fileInfo && (
-          <div className="file-tag">📎 {msg.fileInfo}</div>
-        )}
-        {msg.specialty && !isUser && (
-          <span className="specialty-tag">{msg.specialty}</span>
-        )}
+    <div style={{ marginBottom: "20px" }}>
+      <div className={`message-row ${isUser ? "user-row" : "ai-row"}`}>
+        {!isUser && <div className="avatar ai-avatar">✦</div>}
+        <div className={`message-bubble ${isUser ? "user-bubble" : "ai-bubble"}`}>
+          {isUser
+            ? <p>{msg.content}</p>
+            : <div className="ai-content"
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+          }
+          {msg.fileInfo && (
+            <div className="file-tag">📎 {msg.fileInfo}</div>
+          )}
+          {msg.specialty && !isUser && (
+            <span className="specialty-tag">{msg.specialty}</span>
+          )}
+        </div>
+        {isUser && <div className="avatar user-avatar">U</div>}
       </div>
-      {isUser && <div className="avatar user-avatar">U</div>}
+      {showFlashcard && (
+        <div style={{ paddingLeft: "42px" }}>
+          <Flashcard text={msg.content} specialty={msg.specialty || "General"} />
+        </div>
+      )}
     </div>
   );
 }
