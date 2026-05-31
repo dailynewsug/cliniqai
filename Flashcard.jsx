@@ -1,194 +1,193 @@
 import { useState } from "react";
 
-function parseFlashcardData(text) {
+const SECTION_CONFIG = [
+  { keys: ["definition", "overview", "introduction"], label: "Definition", icon: "📖", color: "#0d2235" },
+  { keys: ["pathogenesis", "pathophysiology", "mechanism"], label: "Pathogenesis", icon: "🔬", color: "#1a1a35" },
+  { keys: ["types", "phenotypes", "classification"], label: "Types", icon: "📊", color: "#1a0d35" },
+  { keys: ["signs", "symptoms", "clinical features", "presentation"], label: "Signs & Symptoms", icon: "🩺", color: "#0d2a1a" },
+  { keys: ["diagnosis", "investigations", "workup"], label: "Diagnosis", icon: "🧪", color: "#2a1a0d" },
+  { keys: ["management", "treatment", "therapy"], label: "Management", icon: "💊", color: "#0d2a2a" },
+  { keys: ["complications", "prognosis"], label: "Complications", icon: "⚠️", color: "#2a0d0d" },
+  { keys: ["pearl", "key point", "remember", "note"], label: "Clinical Pearl", icon: "⭐", color: "#1a2a0d" },
+];
+
+function parseResponse(text) {
+  const lines = text.split('\n');
+  let title = "";
   const sections = [];
-
-  const sectionPatterns = [
-    { key: "definition", label: "Definition", icon: "📖", color: "#1a3a4a" },
-    { key: "pathogenesis", label: "Pathogenesis", icon: "🔬", color: "#1a2a3a" },
-    { key: "types", label: "Types / Phenotypes", icon: "📊", color: "#2a1a3a" },
-    { key: "signs", label: "Signs & Symptoms", icon: "🩺", color: "#1a3a2a" },
-    { key: "diagnosis", label: "Diagnosis", icon: "🧪", color: "#3a2a1a" },
-    { key: "management", label: "Management", icon: "💊", color: "#1a2a2a" },
-    { key: "complications", label: "Complications", icon: "⚠️", color: "#3a1a1a" },
-    { key: "pearl", label: "Clinical Pearl", icon: "⭐", color: "#2a3a1a" },
-  ];
-
-  const lines = text.split('\n').filter(l => l.trim());
   let currentSection = null;
   let currentContent = [];
-  let title = "";
-
-  // Extract title from first heading
-  for (const line of lines) {
-    const h3Match = line.match(/^##\s+(.+)$/);
-    if (h3Match) {
-      title = h3Match[1].replace(/[*#]/g, '').trim();
-      break;
-    }
-  }
-
-  if (!title) {
-    const firstLine = lines[0]?.replace(/[*#]/g, '').trim();
-    title = firstLine?.slice(0, 50) || "Medical Flashcard";
-  }
 
   for (const line of lines) {
-    const cleanLine = line.replace(/^##?\s*/, '').replace(/\*\*/g, '').trim();
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-    const matchedSection = sectionPatterns.find(s =>
-      cleanLine.toLowerCase().includes(s.key) ||
-      cleanLine.toLowerCase().includes(s.label.toLowerCase())
-    );
-
-    if (matchedSection && line.startsWith('#')) {
-      if (currentSection && currentContent.length > 0) {
-        sections.push({ ...currentSection, content: currentContent });
+    // Detect ## headers
+    const headerMatch = trimmed.match(/^##\s+(.+)$/);
+    if (headerMatch) {
+      // Save previous section
+      if (currentSection) {
+        sections.push({ ...currentSection, content: currentContent.filter(Boolean) });
       }
-      currentSection = matchedSection;
-      currentContent = [];
+
+      const headerText = headerMatch[1].replace(/\*\*/g, '').toLowerCase().trim();
+
+      // Set title from first header if no title yet
+      if (!title) title = headerMatch[1].replace(/\*\*/g, '').trim();
+
+      // Match to section config
+      const matched = SECTION_CONFIG.find(sc =>
+        sc.keys.some(k => headerText.includes(k))
+      );
+
+      if (matched) {
+        currentSection = { ...matched };
+        currentContent = [];
+      } else {
+        currentSection = {
+          keys: [],
+          label: headerMatch[1].replace(/\*\*/g, '').trim(),
+          icon: "📋",
+          color: "#1a2a2a"
+        };
+        currentContent = [];
+      }
     } else if (currentSection) {
-      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-        const point = cleanLine.replace(/^[-•]\s*/, '').trim();
+      // Collect bullet points
+      const bulletMatch = trimmed.match(/^[-•*]\s+(.+)$/);
+      if (bulletMatch) {
+        const point = bulletMatch[1].replace(/\*\*/g, '').trim();
         if (point) currentContent.push(point);
-      } else if (cleanLine && !line.startsWith('#')) {
-        currentContent.push(cleanLine);
+      } else if (!trimmed.startsWith('#') && trimmed.length > 10) {
+        const clean = trimmed.replace(/\*\*/g, '').trim();
+        if (clean) currentContent.push(clean);
       }
+    } else if (!title && trimmed.length > 3) {
+      // Use first non-empty line as title fallback
+      title = trimmed.replace(/\*\*/g, '').replace(/^#+\s*/, '').trim().slice(0, 60);
     }
   }
 
+  // Save last section
   if (currentSection && currentContent.length > 0) {
-    sections.push({ ...currentSection, content: currentContent });
+    sections.push({ ...currentSection, content: currentContent.filter(Boolean) });
   }
 
-  // If no sections found, create a general one
-  if (sections.length === 0) {
-    const bullets = lines
-      .filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'))
-      .map(l => l.replace(/^[-•]\s*/, '').trim())
-      .slice(0, 8);
-
-    if (bullets.length > 0) {
-      sections.push({
-        key: "general",
-        label: "Key Points",
-        icon: "📋",
-        color: "#1a3a4a",
-        content: bullets
-      });
-    }
-  }
-
-  return { title, sections: sections.slice(0, 6) };
+  return {
+    title: title || "Medical Summary",
+    sections: sections.slice(0, 8)
+  };
 }
 
 export default function Flashcard({ text, specialty }) {
-  const [flipped, setFlipped] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
-  const { title, sections } = parseFlashcardData(text);
+  const [flipped, setFlipped] = useState(false);
+  const { title, sections } = parseResponse(text);
 
-  if (sections.length === 0) return null;
+  if (!sections || sections.length === 0) return null;
+
+  const current = sections[activeSection];
 
   return (
-    <div className="flashcard-wrapper">
-      <div className="flashcard-header">
-        <div className="flashcard-badge">📇 Auto Flashcard</div>
-        <div className="flashcard-specialty">{specialty}</div>
-        <button
-          className="flashcard-flip-btn"
-          onClick={() => setFlipped(f => !f)}>
-          {flipped ? "📖 Show Summary" : "🔄 Flip Card"}
+    <div className="fc-wrapper">
+      {/* Header */}
+      <div className="fc-top">
+        <div className="fc-badge">📇 Flashcard</div>
+        <div className="fc-spec">{specialty}</div>
+        <button className="fc-flip" onClick={() => setFlipped(f => !f)}>
+          {flipped ? "📖 Detail" : "⚡ Quick Review"}
         </button>
       </div>
 
+      {/* Title */}
+      <div className="fc-title">{title}</div>
+
       {!flipped ? (
-        // FRONT — Summary view
-        <div className="flashcard-front">
-          <div className="flashcard-title">{title}</div>
-          <div className="flashcard-tabs">
+        <>
+          {/* Tab buttons */}
+          <div className="fc-tabs">
             {sections.map((s, i) => (
               <button
                 key={i}
-                className={`fc-tab ${activeSection === i ? "active" : ""}`}
-                onClick={() => setActiveSection(i)}
-                style={activeSection === i ? { borderColor: "#00c896", color: "#00c896" } : {}}>
+                className={`fc-tab-btn ${activeSection === i ? "fc-tab-active" : ""}`}
+                onClick={() => setActiveSection(i)}>
                 {s.icon} {s.label}
               </button>
             ))}
           </div>
-          <div className="flashcard-content"
-            style={{ background: sections[activeSection]?.color || "#1a3a4a" }}>
-            <div className="fc-section-title">
-              {sections[activeSection]?.icon} {sections[activeSection]?.label}
-            </div>
-            <ul className="fc-list">
-              {sections[activeSection]?.content.slice(0, 6).map((point, i) => (
+
+          {/* Content panel */}
+          <div className="fc-panel" style={{ background: current?.color || "#0d2235" }}>
+            <div className="fc-panel-title">{current?.icon} {current?.label}</div>
+            <ul className="fc-bullets">
+              {current?.content.slice(0, 7).map((point, i) => (
                 <li key={i}>{point}</li>
               ))}
             </ul>
           </div>
-          <div className="flashcard-dots">
+
+          {/* Dot navigation */}
+          <div className="fc-dots">
             {sections.map((_, i) => (
-              <button
+              <span
                 key={i}
-                className={`fc-dot ${activeSection === i ? "active" : ""}`}
+                className={`fc-dot ${activeSection === i ? "fc-dot-active" : ""}`}
                 onClick={() => setActiveSection(i)}
               />
             ))}
           </div>
-        </div>
+        </>
       ) : (
-        // BACK — Quick recall view
-        <div className="flashcard-back">
-          <div className="flashcard-title">{title}</div>
-          <div className="fc-back-grid">
-            {sections.map((s, i) => (
-              <div key={i} className="fc-back-section"
-                style={{ borderLeft: `3px solid #00c896`, background: s.color }}>
-                <div className="fc-back-label">{s.icon} {s.label}</div>
-                <div className="fc-back-content">
-                  {s.content.slice(0, 3).join(' · ')}
-                </div>
+        /* Quick review grid */
+        <div className="fc-grid">
+          {sections.map((s, i) => (
+            <div key={i} className="fc-grid-item" style={{ background: s.color }}
+              onClick={() => { setActiveSection(i); setFlipped(false); }}>
+              <div className="fc-grid-label">{s.icon} {s.label}</div>
+              <div className="fc-grid-preview">
+                {s.content.slice(0, 2).map((p, j) => (
+                  <div key={j} className="fc-grid-point">• {p.slice(0, 50)}{p.length > 50 ? "…" : ""}</div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
 
       <style>{`
-        .flashcard-wrapper {
-          margin-top: 16px;
-          background: #0d1f1a;
-          border: 1px solid #00c896;
-          border-radius: 12px;
+        .fc-wrapper {
+          margin-top: 14px;
+          background: #0a1510;
+          border: 1px solid rgba(0,200,150,0.4);
+          border-radius: 14px;
           overflow: hidden;
           font-family: 'DM Mono', monospace;
+          box-shadow: 0 0 20px rgba(0,200,150,0.05);
         }
-        .flashcard-header {
+        .fc-top {
           display: flex;
           align-items: center;
           gap: 8px;
           padding: 10px 14px;
-          background: rgba(0,200,150,0.1);
-          border-bottom: 1px solid rgba(0,200,150,0.2);
+          background: rgba(0,200,150,0.08);
+          border-bottom: 1px solid rgba(0,200,150,0.15);
           flex-wrap: wrap;
         }
-        .flashcard-badge {
+        .fc-badge {
           font-size: 11px;
           color: #00c896;
           font-weight: 600;
-          letter-spacing: 0.5px;
         }
-        .flashcard-specialty {
+        .fc-spec {
           font-size: 9px;
           color: #4a5450;
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 1.5px;
           flex: 1;
         }
-        .flashcard-flip-btn {
-          background: rgba(0,200,150,0.15);
-          border: 1px solid rgba(0,200,150,0.3);
+        .fc-flip {
+          background: rgba(0,200,150,0.1);
+          border: 1px solid rgba(0,200,150,0.25);
           border-radius: 6px;
           color: #00c896;
           font-size: 10px;
@@ -197,31 +196,26 @@ export default function Flashcard({ text, specialty }) {
           font-family: 'DM Mono', monospace;
           transition: all 0.15s;
         }
-        .flashcard-flip-btn:hover {
-          background: #00c896;
-          color: #000;
-        }
-        .flashcard-front, .flashcard-back {
-          padding: 14px;
-        }
-        .flashcard-title {
+        .fc-flip:hover { background: #00c896; color: #000; }
+        .fc-title {
           font-family: 'Crimson Pro', Georgia, serif;
-          font-size: 18px;
+          font-size: 19px;
           color: #e8ede8;
-          margin-bottom: 12px;
           font-weight: 600;
+          padding: 12px 14px 4px;
+          line-height: 1.3;
         }
-        .flashcard-tabs {
+        .fc-tabs {
           display: flex;
           flex-wrap: wrap;
           gap: 6px;
-          margin-bottom: 12px;
+          padding: 10px 14px;
         }
-        .fc-tab {
-          padding: 4px 10px;
+        .fc-tab-btn {
+          padding: 5px 11px;
           border-radius: 20px;
-          border: 1px solid #252b30;
-          background: none;
+          border: 1px solid #1e2428;
+          background: #111417;
           color: #8a9490;
           font-size: 10px;
           cursor: pointer;
@@ -229,72 +223,83 @@ export default function Flashcard({ text, specialty }) {
           transition: all 0.15s;
           white-space: nowrap;
         }
-        .fc-tab:hover { border-color: #00a07a; color: #e8ede8; }
-        .fc-tab.active { background: rgba(0,200,150,0.1); }
-        .flashcard-content {
-          border-radius: 10px;
-          padding: 14px;
-          min-height: 120px;
-          transition: background 0.3s;
+        .fc-tab-btn:hover { border-color: #00a07a; color: #e8ede8; }
+        .fc-tab-active {
+          border-color: #00c896 !important;
+          color: #00c896 !important;
+          background: rgba(0,200,150,0.1) !important;
         }
-        .fc-section-title {
-          font-size: 13px;
+        .fc-panel {
+          margin: 0 14px 10px;
+          border-radius: 10px;
+          padding: 14px 16px;
+          min-height: 110px;
+          transition: background 0.3s ease;
+          border: 1px solid rgba(255,255,255,0.05);
+        }
+        .fc-panel-title {
+          font-size: 12px;
           color: #00c896;
           font-weight: 600;
           margin-bottom: 10px;
           letter-spacing: 0.5px;
         }
-        .fc-list {
+        .fc-bullets {
           padding-left: 16px;
           margin: 0;
         }
-        .fc-list li {
-          color: #e8ede8;
+        .fc-bullets li {
+          color: #d0d8d0;
           font-size: 12px;
           margin-bottom: 6px;
-          line-height: 1.5;
+          line-height: 1.6;
         }
-        .flashcard-dots {
+        .fc-dots {
           display: flex;
           justify-content: center;
           gap: 6px;
-          margin-top: 12px;
+          padding: 10px 14px 14px;
         }
         .fc-dot {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: #252b30;
-          border: none;
+          background: #1e2428;
           cursor: pointer;
           transition: background 0.15s;
-          padding: 0;
+          display: inline-block;
         }
-        .fc-dot.active { background: #00c896; }
-        .fc-back-grid {
+        .fc-dot-active { background: #00c896; }
+        .fc-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 8px;
+          padding: 10px 14px 14px;
         }
-        .fc-back-section {
+        .fc-grid-item {
           padding: 10px 12px;
           border-radius: 8px;
+          cursor: pointer;
+          transition: opacity 0.15s;
+          border: 1px solid rgba(255,255,255,0.04);
         }
-        .fc-back-label {
+        .fc-grid-item:hover { opacity: 0.85; }
+        .fc-grid-label {
           font-size: 10px;
           color: #00c896;
           font-weight: 600;
-          margin-bottom: 4px;
-          letter-spacing: 0.5px;
+          margin-bottom: 5px;
         }
-        .fc-back-content {
-          font-size: 11px;
+        .fc-grid-point {
+          font-size: 10px;
           color: #8a9490;
           line-height: 1.5;
+          margin-bottom: 2px;
         }
         @media (max-width: 480px) {
-          .fc-back-grid { grid-template-columns: 1fr; }
-          .flashcard-title { font-size: 16px; }
+          .fc-grid { grid-template-columns: 1fr; }
+          .fc-title { font-size: 16px; }
+          .fc-tab-btn { font-size: 9px; padding: 4px 8px; }
         }
       `}</style>
     </div>

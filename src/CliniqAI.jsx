@@ -44,7 +44,7 @@ You provide:
 - Clinical guidelines (ACC/AHA, WHO, UpToDate-style)
 ${settings.usmlMode ? "- USMLE-style vignette questions with answer explanations" : ""}
 ${settings.clinicalPearls ? "- Always end responses with a ⭐ Clinical Pearl" : ""}
-${settings.flashcards ? "Structure your response with these exact ## section headers where relevant: ## Definition, ## Pathogenesis, ## Types, ## Signs & Symptoms, ## Diagnosis, ## Management, ## Complications, ## Clinical Pearl" : ""}
+${settings.flashcards ? "Structure your ENTIRE response using these exact markdown headers (use only the ones relevant): ## Definition\n## Pathogenesis\n## Types\n## Signs & Symptoms\n## Diagnosis\n## Management\n## Complications\n## Clinical Pearl\n\nDo NOT write FRONT/BACK. Do NOT write flashcard text. Just structure the response with these headers and bullet points." : ""}
 
 Structure answers clearly:
 1. Direct answer first
