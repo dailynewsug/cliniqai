@@ -23,12 +23,10 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-// Health check — Render needs this
 app.get('/', (req, res) => {
-  res.json({ status: 'CliniqAI server is running' });
+  res.json({ status: 'MedVise server is running' });
 });
 
-// Regular chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages, system } = req.body;
@@ -48,7 +46,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// File upload endpoint
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const { question, system } = req.body;
@@ -61,7 +58,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     const userQuestion = question?.trim() ||
       'Please provide a comprehensive medical summary and analysis.';
 
-    const systemPrompt = `${system || 'You are CliniqAI, an advanced clinical intelligence assistant.'}
+    const systemPrompt = `${system || 'You are MedVise, an advanced clinical intelligence assistant.'}
 
 ANALYSIS INSTRUCTIONS:
 - Analyze content carefully and thoroughly
@@ -97,15 +94,18 @@ ANALYSIS INSTRUCTIONS:
       }
 
       let fileContext = extractedText && extractedText.trim().length > 30
-        ? `The user uploaded "${fileName}" (${pageCount} pages).\n\n=== DOCUMENT CONTENT ===\n${extractedText}\n=== END ===\n\nBase analysis on EXACT content above then cross-reference with medical textbooks.`
-        : `Scanned PDF "${fileName}" — text not extractable. Use medical knowledge based on filename.`;
+        ? `User uploaded "${fileName}" (${pageCount} pages).\n\n=== DOCUMENT CONTENT ===\n${extractedText}\n=== END ===\n\nBase analysis on EXACT content above then cross-reference with medical textbooks.`
+        : `Scanned PDF "${fileName}" — text not extractable. Use medical knowledge based on filename and context.`;
 
       const response = await groq.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         max_tokens: 2000,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `${fileContext}\n\nUSER REQUEST: "${userQuestion}"\n\nRespond thoroughly with ## headers.` }
+          {
+            role: 'user',
+            content: `${fileContext}\n\nUSER REQUEST: "${userQuestion}"\n\nRespond thoroughly with ## headers.`
+          }
         ]
       });
 
@@ -129,7 +129,7 @@ ANALYSIS INSTRUCTIONS:
                 { type: 'image_url', image_url: { url: imageUrl } },
                 {
                   type: 'text',
-                  text: `Analyze this medical image "${fileName}".\n\nUSER REQUEST: "${userQuestion}"\n\nDescribe findings, provide clinical interpretation, differential diagnoses, and cross-reference with Harrison's and current guidelines.`
+                  text: `Analyze this medical image "${fileName}".\n\nUSER REQUEST: "${userQuestion}"\n\nDescribe findings, clinical interpretation, differential diagnoses, and cross-reference with Harrison's and current guidelines.`
                 }
               ]
             }
@@ -138,12 +138,16 @@ ANALYSIS INSTRUCTIONS:
         const aiText = response.choices[0]?.message?.content || 'No response.';
         return res.json({ content: [{ type: 'text', text: aiText }] });
       } catch (visionError) {
+        console.error('Vision error:', visionError.message);
         const fallback = await groq.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           max_tokens: 1500,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Medical image "${fileName}" uploaded. USER REQUEST: "${userQuestion}". Provide clinical information about what this image type typically shows and what to look for.` }
+            {
+              role: 'user',
+              content: `Medical image "${fileName}" uploaded. USER REQUEST: "${userQuestion}". Provide clinical information about what this image type typically shows and what to look for.`
+            }
           ]
         });
         const aiText = fallback.choices[0]?.message?.content || 'No response.';
@@ -161,5 +165,5 @@ ANALYSIS INSTRUCTIONS:
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`CliniqAI server running on port ${PORT}`);
+  console.log(`MedVise server running on port ${PORT}`);
 });
