@@ -33,10 +33,25 @@ function buildSystemPrompt(specialty, language, settings) {
 Current specialty context: ${specialty}
 Depth level: ${settings.depth} — ${depthMap[settings.depth]}
 Language: ${langMap[language]}
-You provide evidence-based medical Q&A, drug info, differential diagnoses, and clinical guidelines.
-${settings.clinicalPearls ? "Always end responses with a ⭐ Clinical Pearl." : ""}
-${settings.flashcards ? "Always end with a 📇 Flashcard:\n  FRONT: [key concept]\n  BACK: [concise answer]" : ""}
-Format with ## headers and bullet points. Always add educational disclaimer.`;
+
+STRICT FORMATTING RULES:
+- Use ## headers for each section
+- Use bullet points starting with - for each item
+- NEVER write "FRONT:", "BACK:", or "Flashcard:" in your response
+- NEVER write text flashcards — the app handles flashcards visually
+${settings.flashcards ? `- Structure response with these ## headers:
+## Definition
+## Pathogenesis
+## Types
+## Signs & Symptoms
+## Diagnosis
+## Management
+## Complications
+## Clinical Pearl` : ""}
+${settings.clinicalPearls && !settings.flashcards ? "- End with ## Clinical Pearl section" : ""}
+
+Always add ## Educational Disclaimer at the end.
+Provide evidence-based answers referencing Harrison's, Robbins, WHO/CDC guidelines.`;
 }
 
 function formatMarkdown(text) {

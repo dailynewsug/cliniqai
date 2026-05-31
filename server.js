@@ -31,15 +31,22 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { messages, system } = req.body;
     const response = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
+      model: 'gemma2-9b-it',
       max_tokens: 1200,
       messages: [
         { role: 'system', content: system },
         ...messages
       ]
     });
-    const aiText = response.choices[0]?.message?.content || 'No response.';
-    res.json({ content: [{ type: 'text', text: aiText }] });
+    let aiText = response.choices[0]?.message?.content || 'No response.';
+
+    // Strip any text-based flashcard the AI writes — we handle this visually
+    aiText = aiText.replace(/📇[\s\S]*?(?=\n\n|\n##|$)/g, '');
+    aiText = aiText.replace(/Flashcard:[\s\S]*?(?=\n\n|\n##|$)/gi, '');
+    aiText = aiText.replace(/FRONT:.*?BACK:.*?(?=\n\n|$)/gis, '');
+    aiText = aiText.replace(/\*\*Flashcard\*\*:[\s\S]*?(?=\n\n|\n##|$)/g, '');
+
+    res.json({ content: [{ type: 'text', text: aiText.trim() }] });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Server error' });
