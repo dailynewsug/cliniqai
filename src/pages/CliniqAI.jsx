@@ -36,29 +36,27 @@ Depth level: ${settings.depth} — ${depthMap[settings.depth]}
 Language: ${langMap[language]}
 
 STRICT FORMATTING RULES:
-- Use ## headers for each section
-- Use bullet points starting with - for each item
-- NEVER write "FRONT:", "BACK:", or "Flashcard:" in your response
-- NEVER write text flashcards — the app handles flashcards visually
-${settings.flashcards ? `- Structure response with these ## headers:
-## Definition
-## Pathogenesis
-## Types
-## Signs & Symptoms
-## Diagnosis
-## Management
-## Complications
-## Clinical Pearl` : ""}
-${settings.clinicalPearls && !settings.flashcards ? "- End with ## Clinical Pearl section" : ""}
+- Always use ## headers for each section
+- Always use bullet points starting with - for each item
+- Structure response with these ## headers where relevant:
+  ## Definition
+  ## Pathogenesis
+  ## Types
+  ## Signs & Symptoms
+  ## Diagnosis
+  ## Management
+  ## Complications
+  ## Clinical Pearl
+- NEVER write FRONT: or BACK: or text flashcards
+
+${settings.clinicalPearls ? "- Always include a ## Clinical Pearl section at the end" : ""}
 
 Always add ## Educational Disclaimer at the end.
 Provide evidence-based answers referencing Harrison's, Robbins, WHO/CDC guidelines.`;
 }
 
 function formatMarkdown(text) {
-  // Hide text flashcard — visual component handles this
-  text = text.replace(/FRONT:[\s\S]*?(?=\n##|\n\n##|$)/gi, '');
-  text = text.replace(/📇[^\n]*/g, '');
+  if (!text) return "";
   return text
     .replace(/^## (.+)$/gm, '<h3 class="md-h3">$1</h3>')
     .replace(/^### (.+)$/gm, '<h4 class="md-h4">$1</h4>')
@@ -100,7 +98,7 @@ function TypingIndicator() {
 function MessageBlock({ msg, showFlashcard }) {
   const isUser = msg.role === "user";
   return (
-    <div style={{ marginBottom: "20px" }}>
+    <div style={{ marginBottom: "24px" }}>
       <div className={`message-row ${isUser ? "user-row" : "ai-row"}`}>
         {!isUser && <div className="avatar ai-avatar">✦</div>}
         <div className={`message-bubble ${isUser ? "user-bubble" : "ai-bubble"}`}>
@@ -118,8 +116,8 @@ function MessageBlock({ msg, showFlashcard }) {
         </div>
         {isUser && <div className="avatar user-avatar">U</div>}
       </div>
-      {showFlashcard && (
-        <div style={{ paddingLeft: "42px" }}>
+      {!isUser && showFlashcard && msg.content && msg.content.length > 50 && (
+        <div style={{ paddingLeft: "42px", paddingRight: "8px" }}>
           <Flashcard text={msg.content} specialty={msg.specialty || "General"} />
         </div>
       )}
@@ -154,10 +152,10 @@ export default function MedVise() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
   // Pre-warm server on page load
   useEffect(() => {
-    fetch("https://cliniqai-server.onrender.com/")
-      .catch(() => {});
+    fetch("https://cliniqai-server.onrender.com/").catch(() => {});
   }, []);
 
   const handleFileSelect = (e) => {
@@ -221,7 +219,11 @@ export default function MedVise() {
       }
 
       const aiText = data.content?.map(b => b.text || "").join("") || "No response.";
-      setMessages(prev => [...prev, { role: "assistant", content: aiText, specialty }]);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: aiText,
+        specialty
+      }]);
       setChatHistory(prev => {
         const title = displayText.slice(0, 40) + (displayText.length > 40 ? "…" : "");
         return [{ title, specialty, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 19)];
@@ -272,7 +274,7 @@ export default function MedVise() {
             </div>
             {[
               { key: "usmlMode", label: "USMLE Quiz Mode", sub: "Generates vignette-style questions" },
-              { key: "flashcards", label: "Auto Flashcards", sub: "Adds flashcard to every response" },
+              { key: "flashcards", label: "Auto Flashcards", sub: "Shows visual flashcard after each response" },
               { key: "clinicalPearls", label: "Clinical Pearls", sub: "Ends each response with a key pearl" },
             ].map(({ key, label, sub }) => (
               <div className="setting-row" key={key}>
@@ -280,8 +282,10 @@ export default function MedVise() {
                   <div className="setting-label">{label}</div>
                   <div className="setting-sub">{sub}</div>
                 </div>
-                <button className={`toggle ${settings[key] ? "on" : "off"}`}
-                  onClick={() => toggleSetting(key)} />
+                <button
+                  className={`toggle ${settings[key] ? "on" : "off"}`}
+                  onClick={() => toggleSetting(key)}
+                />
               </div>
             ))}
             <div className="setting-row">
@@ -306,7 +310,7 @@ export default function MedVise() {
         </div>
       )}
 
-      {/* SIDEBAR OVERLAY for mobile */}
+      {/* SIDEBAR OVERLAY */}
       {showSidebar && (
         <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />
       )}
@@ -314,9 +318,7 @@ export default function MedVise() {
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-left">
-          <button className="menu-btn" onClick={() => setShowSidebar(o => !o)}>
-            ☰
-          </button>
+          <button className="menu-btn" onClick={() => setShowSidebar(o => !o)}>☰</button>
           <div className="logo">
             <div className="logo-icon">Mv</div>
             <span className="logo-name">MedVise</span>
@@ -443,18 +445,20 @@ export default function MedVise() {
                 </div>
               </div>
             ) : (
-messages.map((msg, i) => (
-  <MessageBlock
-    key={i}
-    msg={msg}
-    showFlashcard={settings.flashcards && msg.role === "assistant"}
-  />
-))
+              messages.map((msg, i) => (
+                <MessageBlock
+                  key={i}
+                  msg={msg}
+                  showFlashcard={settings.flashcards && msg.role === "assistant"}
+                />
+              ))
             )}
             {loading && (
               <div className="message-row ai-row">
                 <div className="avatar ai-avatar">✦</div>
-                <div className="message-bubble ai-bubble"><TypingIndicator /></div>
+                <div className="message-bubble ai-bubble">
+                  <TypingIndicator />
+                </div>
               </div>
             )}
             <div ref={bottomRef} />
@@ -475,18 +479,11 @@ messages.map((msg, i) => (
 
           <div className="input-area">
             <div className="input-wrapper">
-              <button className="attach-btn" onClick={() => fileRef.current?.click()}
-                title="Upload PDF or Image">📎
-              </button>
-              <input ref={fileRef} type="file"
-                accept=".pdf,image/*"
-                onChange={handleFileSelect}
-                style={{ display: 'none' }}
-              />
+              <button className="attach-btn" onClick={() => fileRef.current?.click()}>📎</button>
+              <input ref={fileRef} type="file" accept=".pdf,image/*"
+                onChange={handleFileSelect} style={{ display: 'none' }} />
               <textarea ref={inputRef} className="chat-input"
-                placeholder={uploadedFile
-                  ? "Ask about this file or press send..."
-                  : "Ask MedVise anything..."}
+                placeholder={uploadedFile ? "Ask about this file or press send..." : "Ask MedVise anything..."}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => {
@@ -508,8 +505,8 @@ messages.map((msg, i) => (
               </button>
             </div>
             <div className="input-meta">
-              <span className="input-hint">📎 PDF/Image · 🎓
-                <button className="usmle-inline-btn" onClick={runUSMLE}>USMLE Quiz</button>
+              <span className="input-hint">📎 PDF/Image ·
+                <button className="usmle-inline-btn" onClick={runUSMLE}> 🎓 USMLE Quiz</button>
               </span>
               <span className="specialty-indicator" onClick={() => setShowSidebar(true)}>
                 {specialty} ▾
@@ -521,175 +518,79 @@ messages.map((msg, i) => (
 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
         :root {
-          --bg: #0a0d0f;
-          --surface: #111417;
-          --surface2: #181c20;
-          --border: #1e2428;
-          --border2: #252b30;
-          --accent: #00c896;
-          --accent2: #00a07a;
-          --accent-glow: rgba(0,200,150,0.12);
-          --text: #e8ede8;
-          --text2: #8a9490;
-          --text3: #4a5450;
-          --user-bg: #0f2420;
-          --user-border: #1a3d32;
-          --red: #ff6b6b;
+          --bg: #0a0d0f; --surface: #111417; --surface2: #181c20;
+          --border: #1e2428; --border2: #252b30;
+          --accent: #00c896; --accent2: #00a07a; --accent-glow: rgba(0,200,150,0.12);
+          --text: #e8ede8; --text2: #8a9490; --text3: #4a5450;
+          --user-bg: #0f2420; --user-border: #1a3d32; --red: #ff6b6b;
           --font-serif: 'Crimson Pro', Georgia, serif;
           --font-mono: 'DM Mono', monospace;
         }
-
         html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 13px; }
-
         .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
-
-        /* TOPBAR */
         .topbar {
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 12px; height: 52px; min-height: 52px;
-          background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
-          position: relative; z-index: 50;
+          background: var(--surface); border-bottom: 1px solid var(--border);
+          flex-shrink: 0; position: relative; z-index: 50;
         }
         .topbar-left { display: flex; align-items: center; gap: 10px; }
         .topbar-right { display: flex; align-items: center; gap: 6px; }
-        .menu-btn {
-          background: none; border: none; color: var(--text2); cursor: pointer;
-          font-size: 18px; padding: 6px; border-radius: 6px; line-height: 1;
-        }
+        .menu-btn { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 6px; border-radius: 6px; }
         .menu-btn:hover { color: var(--accent); }
         .logo { display: flex; align-items: center; gap: 8px; }
-        .logo-icon {
-          width: 28px; height: 28px; background: var(--accent); border-radius: 6px;
-          display: flex; align-items: center; justify-content: center;
-          color: #000; font-weight: 700; font-size: 11px; flex-shrink: 0;
-        }
+        .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 700; font-size: 11px; flex-shrink: 0; }
         .logo-name { font-family: var(--font-serif); font-size: 20px; font-weight: 600; }
-        .lang-btn {
-          padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border2);
-          background: var(--surface2); color: var(--text2); cursor: pointer;
-          font-size: 10px; font-family: var(--font-mono); transition: all 0.15s;
-        }
+        .lang-btn { padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); cursor: pointer; font-size: 10px; font-family: var(--font-mono); transition: all 0.15s; }
         .lang-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
-        .icon-btn {
-          width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2);
-          background: var(--surface2); color: var(--text2); cursor: pointer;
-          display: flex; align-items: center; justify-content: center; font-size: 15px;
-        }
+        .icon-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; }
         .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
         .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0; }
-
-        /* BODY */
         .body { display: flex; flex: 1; overflow: hidden; position: relative; }
-
-        /* SIDEBAR OVERLAY */
-        .sidebar-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-          z-index: 90; display: none;
-        }
-
-        /* LEFT SIDEBAR */
-        .left-sidebar {
-          width: 280px; background: var(--surface);
-          border-right: 1px solid var(--border);
-          display: flex; flex-direction: column; overflow: hidden;
-          flex-shrink: 0;
-        }
-        .sidebar-top {
-          display: none; align-items: center; justify-content: space-between;
-          padding: 16px; border-bottom: 1px solid var(--border);
-        }
+        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; }
+        .left-sidebar { width: 280px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+        .sidebar-top { display: none; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
         .logo-full { display: flex; align-items: center; gap: 8px; }
-        .sidebar-close-btn {
-          background: none; border: none; color: var(--text2);
-          cursor: pointer; font-size: 18px; padding: 4px;
-        }
+        .sidebar-close-btn { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 4px; }
         .panel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-        .panel-tab {
-          flex: 1; padding: 10px 4px; background: none; border: none;
-          color: var(--text3); font-family: var(--font-mono); font-size: 9px;
-          letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
-          border-bottom: 2px solid transparent; transition: all 0.15s;
-          display: flex; flex-direction: column; align-items: center; gap: 3px;
-        }
+        .panel-tab { flex: 1; padding: 10px 4px; background: none; border: none; color: var(--text3); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
         .tab-icon { font-size: 14px; }
         .tab-label { font-size: 8px; letter-spacing: 1px; }
         .panel-content { flex: 1; overflow-y: auto; padding: 14px; }
         .panel-content::-webkit-scrollbar { width: 3px; }
         .panel-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-        .section-label {
-          font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: var(--text3); margin-bottom: 10px;
-        }
+        .section-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
         .specialty-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-        .spec-chip {
-          padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border2);
-          background: none; color: var(--text2); font-family: var(--font-mono);
-          font-size: 11px; cursor: pointer; transition: all 0.15s;
-        }
-        .spec-chip:hover, .spec-chip:active { border-color: var(--accent2); color: var(--text); }
+        .spec-chip { padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border2); background: none; color: var(--text2); font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+        .spec-chip:hover { border-color: var(--accent2); color: var(--text); }
         .spec-chip.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
-        .side-input {
-          width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 8px; padding: 10px 12px; color: var(--text);
-          font-family: var(--font-mono); font-size: 13px; outline: none;
-        }
+        .side-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; }
         .side-input:focus { border-color: var(--accent); }
-        .side-textarea {
-          width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 8px; padding: 10px 12px; color: var(--text);
-          font-family: var(--font-mono); font-size: 13px; outline: none; resize: none;
-        }
+        .side-textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; resize: none; }
         .side-textarea:focus { border-color: var(--accent); }
-        .action-btn {
-          width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px;
-          border: 1px solid var(--accent2); background: var(--accent-glow);
-          color: var(--accent); font-family: var(--font-mono); font-size: 12px;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .action-btn:hover, .action-btn:active { background: var(--accent); color: #000; }
+        .action-btn { width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid var(--accent2); background: var(--accent-glow); color: var(--accent); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+        .action-btn:hover { background: var(--accent); color: #000; }
         .panel-hint { margin-top: 10px; font-size: 10px; color: var(--text3); line-height: 1.6; }
-        .history-item {
-          padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
-          margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
-        }
+        .history-item { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
         .history-item:hover { border-color: var(--border2); background: var(--surface2); }
         .history-title { font-size: 12px; color: var(--text); margin-bottom: 3px; }
         .history-meta { font-size: 10px; color: var(--text3); }
-
-        /* MAIN */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .chat-area { flex: 1; overflow-y: auto; padding: 16px; }
         .chat-area::-webkit-scrollbar { width: 3px; }
         .chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-        /* EMPTY STATE */
-        .empty-state {
-          display: flex; flex-direction: column; align-items: center;
-          justify-content: center; min-height: 100%; gap: 12px; text-align: center;
-          padding: 20px;
-        }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; gap: 12px; text-align: center; padding: 20px; }
         .empty-icon { font-size: 44px; }
         .empty-title { font-family: var(--font-serif); font-size: 26px; color: var(--text); }
         .empty-sub { font-size: 13px; color: var(--text2); max-width: 360px; line-height: 1.7; }
         .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; max-width: 400px; }
-        .quick-chip {
-          padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border2);
-          background: var(--surface); color: var(--text2); font-family: var(--font-mono);
-          font-size: 11px; cursor: pointer; transition: all 0.15s;
-        }
-        .quick-chip:hover, .quick-chip:active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
-
-        /* MESSAGES */
-        .message-row { display: flex; gap: 10px; margin-bottom: 18px; align-items: flex-start; }
+        .quick-chip { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+        .quick-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+        .message-row { display: flex; gap: 10px; align-items: flex-start; }
         .user-row { flex-direction: row-reverse; }
-        .avatar {
-          width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;
-        }
+        .avatar { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
         .ai-avatar { background: var(--accent-glow); border: 1px solid var(--accent2); color: var(--accent); }
         .user-avatar { background: var(--user-bg); border: 1px solid var(--user-border); color: var(--text2); }
         .message-bubble { max-width: 80%; padding: 12px 14px; border-radius: 12px; line-height: 1.6; word-break: break-word; }
@@ -702,165 +603,69 @@ messages.map((msg, i) => (
         .ai-content strong { color: var(--accent); }
         .ai-content em { color: var(--text2); font-style: italic; }
         .ai-content p { margin-bottom: 6px; font-size: 13px; }
-        .specialty-tag {
-          display: inline-block; margin-top: 8px; padding: 2px 8px;
-          background: var(--accent-glow); border: 1px solid var(--accent2);
-          border-radius: 4px; font-size: 9px; letter-spacing: 1.5px;
-          text-transform: uppercase; color: var(--accent);
-        }
-        .file-tag {
-          display: inline-block; margin-top: 6px; padding: 2px 8px;
-          background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 4px; font-size: 10px; color: var(--text2);
-        }
-
-        /* FILE PREVIEW */
-        .file-preview-bar {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 8px 16px; background: var(--surface2); border-top: 1px solid var(--border);
-        }
+        .specialty-tag { display: inline-block; margin-top: 8px; padding: 2px 8px; background: var(--accent-glow); border: 1px solid var(--accent2); border-radius: 4px; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); }
+        .file-tag { display: inline-block; margin-top: 6px; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; font-size: 10px; color: var(--text2); }
+        .file-preview-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface2); border-top: 1px solid var(--border); }
         .file-preview-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .img-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border2); flex-shrink: 0; }
         .file-icon { font-size: 22px; flex-shrink: 0; }
         .file-name { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .remove-file-btn {
-          background: none; border: none; color: var(--text3); cursor: pointer;
-          font-size: 16px; padding: 4px 8px; border-radius: 4px; flex-shrink: 0;
-        }
-
-        /* TYPING */
+        .remove-file-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; }
         .typing-wrap { display: flex; flex-direction: column; gap: 6px; }
-.typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
-.typing-msg { font-size: 10px; color: var(--text3); animation: fadein 0.5s ease; }
-@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
         .typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%,80%,100% { transform: scale(0.7); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
-
-        /* INPUT */
-        .input-area {
-          padding: 12px 16px; border-top: 1px solid var(--border);
-          background: var(--surface); flex-shrink: 0;
-          padding-bottom: max(12px, env(safe-area-inset-bottom));
-        }
-        .input-wrapper {
-          display: flex; gap: 8px; align-items: flex-end;
-          background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 12px; padding: 8px 12px; transition: border-color 0.2s;
-        }
+        .typing-msg { font-size: 10px; color: var(--text3); animation: fadein 0.5s ease; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .input-area { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+        .input-wrapper { display: flex; gap: 8px; align-items: flex-end; background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 8px 12px; transition: border-color 0.2s; }
         .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-        .attach-btn {
-          background: none; border: none; cursor: pointer; font-size: 18px;
-          padding: 0 2px; opacity: 0.6; transition: opacity 0.15s; flex-shrink: 0;
-          line-height: 1;
-        }
-        .attach-btn:hover, .attach-btn:active { opacity: 1; }
-        .chat-input {
-          flex: 1; background: transparent; border: none; outline: none;
-          color: var(--text); font-family: var(--font-mono); font-size: 14px;
-          line-height: 1.5; resize: none; max-height: 100px; min-height: 20px;
-        }
+        .attach-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 2px; opacity: 0.6; transition: opacity 0.15s; flex-shrink: 0; line-height: 1; }
+        .attach-btn:hover { opacity: 1; }
+        .chat-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--font-mono); font-size: 14px; line-height: 1.5; resize: none; max-height: 100px; min-height: 20px; }
         .chat-input::placeholder { color: var(--text3); }
-        .send-btn {
-          background: var(--accent); border: none; border-radius: 8px;
-          width: 34px; height: 34px; display: flex; align-items: center;
-          justify-content: center; cursor: pointer; color: #000; transition: all 0.15s; flex-shrink: 0;
-        }
+        .send-btn { background: var(--accent); border: none; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #000; transition: all 0.15s; flex-shrink: 0; }
         .send-btn:hover { background: #00e0aa; }
         .send-btn:active { transform: scale(0.95); }
         .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
         .input-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
         .input-hint { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
-        .usmle-inline-btn {
-          background: none; border: 1px solid var(--border2); border-radius: 4px;
-          color: var(--text3); font-family: var(--font-mono); font-size: 10px;
-          padding: 1px 6px; cursor: pointer; transition: all 0.15s;
-        }
+        .usmle-inline-btn { background: none; border: 1px solid var(--border2); border-radius: 4px; color: var(--text3); font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; cursor: pointer; transition: all 0.15s; }
         .usmle-inline-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .specialty-indicator {
-          font-size: 10px; color: var(--accent); cursor: pointer;
-          padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent2);
-          background: var(--accent-glow); white-space: nowrap;
-        }
-
-        /* SETTINGS */
-        .settings-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-          display: flex; align-items: flex-end; justify-content: center; z-index: 200;
-        }
-        .settings-panel {
-          background: var(--surface); border: 1px solid var(--border2);
-          border-radius: 16px 16px 0 0; padding: 20px; width: 100%; max-width: 500px;
-          max-height: 85vh; overflow-y: auto;
-          padding-bottom: max(20px, env(safe-area-inset-bottom));
-        }
+        .specialty-indicator { font-size: 10px; color: var(--accent); cursor: pointer; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent2); background: var(--accent-glow); white-space: nowrap; }
+        .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; justify-content: center; z-index: 200; }
+        .settings-panel { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px 16px 0 0; padding: 20px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
         .settings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         .settings-title { font-family: var(--font-serif); font-size: 22px; }
         .settings-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 20px; padding: 4px; }
-        .setting-row {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
-        }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px; }
         .setting-label { font-size: 13px; color: var(--text); margin-bottom: 2px; }
         .setting-sub { font-size: 10px; color: var(--text3); }
-        .toggle {
-          width: 44px; height: 24px; border-radius: 12px; border: none;
-          cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
-        }
+        .toggle { width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
         .toggle.on { background: var(--accent); }
         .toggle.off { background: var(--border2); }
-        .toggle::after {
-          content: ''; position: absolute; width: 18px; height: 18px;
-          border-radius: 50%; background: white; top: 3px; transition: left 0.2s;
-        }
+        .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: white; top: 3px; transition: left 0.2s; }
         .toggle.on::after { left: 23px; }
         .toggle.off::after { left: 3px; }
         .depth-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-        .depth-btn {
-          padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border2);
-          background: none; color: var(--text3); font-family: var(--font-mono);
-          font-size: 11px; cursor: pointer; transition: all 0.15s;
-        }
+        .depth-btn { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border2); background: none; color: var(--text3); font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.15s; }
         .depth-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
-        .close-settings-btn {
-          width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px;
-          border: 1px solid var(--border2); background: none; color: var(--text2);
-          font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: all 0.15s;
-        }
+        .close-settings-btn { width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px; border: 1px solid var(--border2); background: none; color: var(--text2); font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: all 0.15s; }
         .close-settings-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-        /* RTL */
         .rtl { direction: rtl; text-align: right; }
-
-        /* ── MOBILE STYLES ── */
         @media (max-width: 768px) {
           .sidebar-overlay { display: block; }
-
-          .left-sidebar {
-            position: fixed; top: 0; left: 0; bottom: 0;
-            width: 300px; z-index: 100;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            border-right: 1px solid var(--border2);
-            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-          }
+          .left-sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 300px; z-index: 100; transform: translateX(-100%); transition: transform 0.3s ease; border-right: 1px solid var(--border2); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
           .left-sidebar.open { transform: translateX(0); }
           .sidebar-top { display: flex; }
-
           .message-bubble { max-width: 88%; }
           .chat-area { padding: 12px; }
-          .logo-name { font-size: 18px; }
-          .empty-title { font-size: 22px; }
-          .settings-panel { border-radius: 16px 16px 0 0; }
         }
-
         @media (max-width: 480px) {
           .message-bubble { max-width: 92%; padding: 10px 12px; }
           .lang-btn { padding: 3px 5px; font-size: 9px; }
-          .empty-title { font-size: 20px; }
-          .empty-sub { font-size: 12px; }
-          .quick-chip { font-size: 10px; padding: 6px 10px; }
         }
       `}</style>
     </div>
