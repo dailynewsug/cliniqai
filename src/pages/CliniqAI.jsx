@@ -9,10 +9,10 @@ const SPECIALTIES = [
 ];
 
 const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "ar", label: "العربية" },
-  { code: "fr", label: "Français" },
-  { code: "sw", label: "Kiswahili" }
+  { code: "en", label: "EN" },
+  { code: "ar", label: "AR" },
+  { code: "fr", label: "FR" },
+  { code: "sw", label: "SW" }
 ];
 
 const DEPTH_LEVELS = ["Student", "Resident", "Specialist"];
@@ -97,6 +97,7 @@ export default function MedVise() {
     depth: "Student"
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [drugQuery, setDrugQuery] = useState("");
   const [ddxInput, setDdxInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
@@ -115,8 +116,7 @@ export default function MedVise() {
     if (!file) return;
     setUploadedFile(file);
     if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setUploadPreview(url);
+      setUploadPreview(URL.createObjectURL(file));
     } else {
       setUploadPreview(null);
     }
@@ -144,16 +144,15 @@ export default function MedVise() {
     setMessages(updated);
     setInput("");
     setLoading(true);
+    setShowSidebar(false);
 
     try {
       let data;
-
       if (uploadedFile) {
         const formData = new FormData();
         formData.append('file', uploadedFile);
-        formData.append('question', userText || 'Please analyze this medical document and provide a detailed summary.');
+        formData.append('question', userText || 'Please analyze this medical document.');
         formData.append('system', buildSystemPrompt(specialty, language, settings));
-
         const res = await fetch("https://cliniqai-server.onrender.com/api/upload", {
           method: "POST",
           body: formData
@@ -214,10 +213,14 @@ export default function MedVise() {
   return (
     <div className={`app ${isRTL ? "rtl" : ""}`}>
 
+      {/* SETTINGS OVERLAY */}
       {showSettings && (
         <div className="settings-overlay" onClick={() => setShowSettings(false)}>
           <div className="settings-panel" onClick={e => e.stopPropagation()}>
-            <div className="settings-title">⚙ Settings</div>
+            <div className="settings-header">
+              <div className="settings-title">⚙ Settings</div>
+              <button className="settings-close" onClick={() => setShowSettings(false)}>✕</button>
+            </div>
             {[
               { key: "usmlMode", label: "USMLE Quiz Mode", sub: "Generates vignette-style questions" },
               { key: "flashcards", label: "Auto Flashcards", sub: "Adds flashcard to every response" },
@@ -254,14 +257,21 @@ export default function MedVise() {
         </div>
       )}
 
+      {/* SIDEBAR OVERLAY for mobile */}
+      {showSidebar && (
+        <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />
+      )}
+
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-left">
+          <button className="menu-btn" onClick={() => setShowSidebar(o => !o)}>
+            ☰
+          </button>
           <div className="logo">
             <div className="logo-icon">Mv</div>
             <span className="logo-name">MedVise</span>
           </div>
-          <span className="logo-tagline">Clinical Intelligence AI</span>
         </div>
         <div className="topbar-right">
           {LANGUAGES.map(l => (
@@ -280,18 +290,27 @@ export default function MedVise() {
       <div className="body">
 
         {/* LEFT SIDEBAR */}
-        <div className="left-sidebar">
+        <div className={`left-sidebar ${showSidebar ? "open" : ""}`}>
+          <div className="sidebar-top">
+            <div className="logo-full">
+              <div className="logo-icon">Mv</div>
+              <span className="logo-name">MedVise</span>
+            </div>
+            <button className="sidebar-close-btn" onClick={() => setShowSidebar(false)}>✕</button>
+          </div>
+
           <div className="panel-tabs">
             {[
-              { id: "specialties", label: "Spec" },
-              { id: "drugs", label: "Drug" },
-              { id: "ddx", label: "DDx" },
-              { id: "history", label: "Hist" },
+              { id: "specialties", label: "Spec", icon: "🏥" },
+              { id: "drugs", label: "Drug", icon: "💊" },
+              { id: "ddx", label: "DDx", icon: "🧠" },
+              { id: "history", label: "Hist", icon: "📋" },
             ].map(p => (
               <button key={p.id}
                 className={`panel-tab ${activePanel === p.id ? "active" : ""}`}
                 onClick={() => setActivePanel(p.id)}>
-                {p.label}
+                <span className="tab-icon">{p.icon}</span>
+                <span className="tab-label">{p.label}</span>
               </button>
             ))}
           </div>
@@ -304,7 +323,8 @@ export default function MedVise() {
                   {SPECIALTIES.map(s => (
                     <button key={s}
                       className={`spec-chip ${specialty === s ? "active" : ""}`}
-                      onClick={() => setSpecialty(s)}>{s}
+                      onClick={() => { setSpecialty(s); setShowSidebar(false); }}>
+                      {s}
                     </button>
                   ))}
                 </div>
@@ -328,7 +348,7 @@ export default function MedVise() {
             {activePanel === "ddx" && (
               <>
                 <div className="section-label">DDx Generator</div>
-                <textarea className="side-textarea" rows={5}
+                <textarea className="side-textarea" rows={4}
                   placeholder="e.g. 45yo male, chest pain, diaphoresis..."
                   value={ddxInput}
                   onChange={e => setDdxInput(e.target.value)}
@@ -366,6 +386,12 @@ export default function MedVise() {
                   Evidence-based answers for clinicians and medical students.<br />
                   Select a specialty · look up a drug · upload a document
                 </div>
+                <div className="quick-actions">
+                  <button className="quick-chip" onClick={() => sendMessage("What are the first-line treatments for hypertension?")}>Hypertension treatment</button>
+                  <button className="quick-chip" onClick={() => sendMessage("Explain the pathophysiology of diabetes mellitus type 2")}>Diabetes pathophysiology</button>
+                  <button className="quick-chip" onClick={() => sendMessage("What are the signs of meningitis?")}>Signs of meningitis</button>
+                  <button className="quick-chip" onClick={runUSMLE}>🎓 USMLE Quiz</button>
+                </div>
               </div>
             ) : (
               messages.map((msg, i) => <MessageBlock key={i} msg={msg} />)
@@ -395,8 +421,7 @@ export default function MedVise() {
           <div className="input-area">
             <div className="input-wrapper">
               <button className="attach-btn" onClick={() => fileRef.current?.click()}
-                title="Upload PDF or Image">
-                📎
+                title="Upload PDF or Image">📎
               </button>
               <input ref={fileRef} type="file"
                 accept=".pdf,image/*"
@@ -405,8 +430,8 @@ export default function MedVise() {
               />
               <textarea ref={inputRef} className="chat-input"
                 placeholder={uploadedFile
-                  ? "Ask a question about this file, or press send to analyze it..."
-                  : "Ask MedVise about drugs, diseases, pathophysiology, diagnostics..."}
+                  ? "Ask about this file or press send..."
+                  : "Ask MedVise anything..."}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => {
@@ -428,47 +453,102 @@ export default function MedVise() {
               </button>
             </div>
             <div className="input-meta">
-              <span className="input-hint">Enter to send · 📎 to upload PDF or image</span>
-              <button className="usmle-btn" onClick={runUSMLE}>🎓 USMLE Quiz</button>
+              <span className="input-hint">📎 PDF/Image · 🎓
+                <button className="usmle-inline-btn" onClick={runUSMLE}>USMLE Quiz</button>
+              </span>
+              <span className="specialty-indicator" onClick={() => setShowSidebar(true)}>
+                {specialty} ▾
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       <style>{`
-        .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        :root {
+          --bg: #0a0d0f;
+          --surface: #111417;
+          --surface2: #181c20;
+          --border: #1e2428;
+          --border2: #252b30;
+          --accent: #00c896;
+          --accent2: #00a07a;
+          --accent-glow: rgba(0,200,150,0.12);
+          --text: #e8ede8;
+          --text2: #8a9490;
+          --text3: #4a5450;
+          --user-bg: #0f2420;
+          --user-border: #1a3d32;
+          --red: #ff6b6b;
+          --font-serif: 'Crimson Pro', Georgia, serif;
+          --font-mono: 'DM Mono', monospace;
+        }
+
+        html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 13px; }
+
+        .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+
+        /* TOPBAR */
         .topbar {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 0 20px; height: 52px; min-height: 52px;
+          padding: 0 12px; height: 52px; min-height: 52px;
           background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
+          position: relative; z-index: 50;
         }
-        .topbar-left { display: flex; align-items: center; gap: 12px; }
-        .topbar-right { display: flex; align-items: center; gap: 8px; }
+        .topbar-left { display: flex; align-items: center; gap: 10px; }
+        .topbar-right { display: flex; align-items: center; gap: 6px; }
+        .menu-btn {
+          background: none; border: none; color: var(--text2); cursor: pointer;
+          font-size: 18px; padding: 6px; border-radius: 6px; line-height: 1;
+        }
+        .menu-btn:hover { color: var(--accent); }
         .logo { display: flex; align-items: center; gap: 8px; }
         .logo-icon {
           width: 28px; height: 28px; background: var(--accent); border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          color: #000; font-weight: 700; font-size: 11px;
+          color: #000; font-weight: 700; font-size: 11px; flex-shrink: 0;
         }
         .logo-name { font-family: var(--font-serif); font-size: 20px; font-weight: 600; }
-        .logo-tagline { font-size: 11px; color: var(--text3); }
         .lang-btn {
-          padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border2);
+          padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border2);
           background: var(--surface2); color: var(--text2); cursor: pointer;
-          font-size: 11px; font-family: var(--font-mono); transition: all 0.15s;
+          font-size: 10px; font-family: var(--font-mono); transition: all 0.15s;
         }
         .lang-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
         .icon-btn {
-          width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2);
+          width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2);
           background: var(--surface2); color: var(--text2); cursor: pointer;
           display: flex; align-items: center; justify-content: center; font-size: 15px;
         }
         .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-        .body { display: flex; flex: 1; overflow: hidden; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0; }
+
+        /* BODY */
+        .body { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        /* SIDEBAR OVERLAY */
+        .sidebar-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+          z-index: 90; display: none;
+        }
+
+        /* LEFT SIDEBAR */
         .left-sidebar {
-          width: 240px; min-width: 240px; background: var(--surface);
-          border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;
+          width: 280px; background: var(--surface);
+          border-right: 1px solid var(--border);
+          display: flex; flex-direction: column; overflow: hidden;
+          flex-shrink: 0;
+        }
+        .sidebar-top {
+          display: none; align-items: center; justify-content: space-between;
+          padding: 16px; border-bottom: 1px solid var(--border);
+        }
+        .logo-full { display: flex; align-items: center; gap: 8px; }
+        .sidebar-close-btn {
+          background: none; border: none; color: var(--text2);
+          cursor: pointer; font-size: 18px; padding: 4px;
         }
         .panel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .panel-tab {
@@ -476,75 +556,97 @@ export default function MedVise() {
           color: var(--text3); font-family: var(--font-mono); font-size: 9px;
           letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
           border-bottom: 2px solid transparent; transition: all 0.15s;
+          display: flex; flex-direction: column; align-items: center; gap: 3px;
         }
         .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-icon { font-size: 14px; }
+        .tab-label { font-size: 8px; letter-spacing: 1px; }
         .panel-content { flex: 1; overflow-y: auto; padding: 14px; }
+        .panel-content::-webkit-scrollbar { width: 3px; }
+        .panel-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
         .section-label {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
           color: var(--text3); margin-bottom: 10px;
         }
         .specialty-grid { display: flex; flex-wrap: wrap; gap: 6px; }
         .spec-chip {
-          padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2);
+          padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border2);
           background: none; color: var(--text2); font-family: var(--font-mono);
-          font-size: 10px; cursor: pointer; transition: all 0.15s;
+          font-size: 11px; cursor: pointer; transition: all 0.15s;
         }
-        .spec-chip:hover { border-color: var(--accent2); color: var(--text); }
+        .spec-chip:hover, .spec-chip:active { border-color: var(--accent2); color: var(--text); }
         .spec-chip.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
         .side-input {
           width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 8px; padding: 8px 10px; color: var(--text);
-          font-family: var(--font-mono); font-size: 11px; outline: none;
+          border-radius: 8px; padding: 10px 12px; color: var(--text);
+          font-family: var(--font-mono); font-size: 13px; outline: none;
         }
         .side-input:focus { border-color: var(--accent); }
         .side-textarea {
           width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 8px; padding: 8px 10px; color: var(--text);
-          font-family: var(--font-mono); font-size: 11px; outline: none; resize: none;
+          border-radius: 8px; padding: 10px 12px; color: var(--text);
+          font-family: var(--font-mono); font-size: 13px; outline: none; resize: none;
         }
         .side-textarea:focus { border-color: var(--accent); }
         .action-btn {
-          width: 100%; margin-top: 8px; padding: 8px; border-radius: 8px;
+          width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px;
           border: 1px solid var(--accent2); background: var(--accent-glow);
-          color: var(--accent); font-family: var(--font-mono); font-size: 11px;
+          color: var(--accent); font-family: var(--font-mono); font-size: 12px;
           cursor: pointer; transition: all 0.15s;
         }
-        .action-btn:hover { background: var(--accent); color: #000; }
+        .action-btn:hover, .action-btn:active { background: var(--accent); color: #000; }
         .panel-hint { margin-top: 10px; font-size: 10px; color: var(--text3); line-height: 1.6; }
         .history-item {
-          padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
-          margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
+          padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+          margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
         }
         .history-item:hover { border-color: var(--border2); background: var(--surface2); }
-        .history-title { font-size: 11px; color: var(--text); margin-bottom: 2px; }
-        .history-meta { font-size: 9px; color: var(--text3); }
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 24px; }
+        .history-title { font-size: 12px; color: var(--text); margin-bottom: 3px; }
+        .history-meta { font-size: 10px; color: var(--text3); }
+
+        /* MAIN */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 16px; }
+        .chat-area::-webkit-scrollbar { width: 3px; }
+        .chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+        /* EMPTY STATE */
         .empty-state {
           display: flex; flex-direction: column; align-items: center;
-          justify-content: center; height: 100%; gap: 12px; text-align: center;
+          justify-content: center; min-height: 100%; gap: 12px; text-align: center;
+          padding: 20px;
         }
-        .empty-icon { font-size: 40px; }
-        .empty-title { font-family: var(--font-serif); font-size: 26px; }
-        .empty-sub { font-size: 12px; color: var(--text2); max-width: 400px; line-height: 1.7; }
-        .message-row { display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-start; }
+        .empty-icon { font-size: 44px; }
+        .empty-title { font-family: var(--font-serif); font-size: 26px; color: var(--text); }
+        .empty-sub { font-size: 13px; color: var(--text2); max-width: 360px; line-height: 1.7; }
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; max-width: 400px; }
+        .quick-chip {
+          padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border2);
+          background: var(--surface); color: var(--text2); font-family: var(--font-mono);
+          font-size: 11px; cursor: pointer; transition: all 0.15s;
+        }
+        .quick-chip:hover, .quick-chip:active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+        /* MESSAGES */
+        .message-row { display: flex; gap: 10px; margin-bottom: 18px; align-items: flex-start; }
         .user-row { flex-direction: row-reverse; }
         .avatar {
-          width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;
+          width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;
         }
         .ai-avatar { background: var(--accent-glow); border: 1px solid var(--accent2); color: var(--accent); }
         .user-avatar { background: var(--user-bg); border: 1px solid var(--user-border); color: var(--text2); }
-        .message-bubble { max-width: 72%; padding: 14px 16px; border-radius: 12px; line-height: 1.6; }
+        .message-bubble { max-width: 80%; padding: 12px 14px; border-radius: 12px; line-height: 1.6; word-break: break-word; }
         .ai-bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 4px 12px 12px 12px; }
         .user-bubble { background: var(--user-bg); border: 1px solid var(--user-border); border-radius: 12px 4px 12px 12px; }
         .ai-content .md-h3 { font-family: var(--font-serif); font-size: 16px; color: var(--accent); margin: 12px 0 6px; font-weight: 600; }
         .ai-content .md-h4 { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin: 10px 0 4px; }
         .ai-content ul { padding-left: 16px; margin: 6px 0; }
-        .ai-content li { margin-bottom: 4px; }
+        .ai-content li { margin-bottom: 4px; font-size: 13px; }
         .ai-content strong { color: var(--accent); }
         .ai-content em { color: var(--text2); font-style: italic; }
-        .ai-content p { margin-bottom: 6px; }
+        .ai-content p { margin-bottom: 6px; font-size: 13px; }
         .specialty-tag {
           display: inline-block; margin-top: 8px; padding: 2px 8px;
           background: var(--accent-glow); border: 1px solid var(--accent2);
@@ -556,43 +658,50 @@ export default function MedVise() {
           background: var(--surface2); border: 1px solid var(--border2);
           border-radius: 4px; font-size: 10px; color: var(--text2);
         }
+
+        /* FILE PREVIEW */
         .file-preview-bar {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 8px 24px; background: var(--surface2); border-top: 1px solid var(--border);
+          padding: 8px 16px; background: var(--surface2); border-top: 1px solid var(--border);
         }
-        .file-preview-info { display: flex; align-items: center; gap: 10px; }
-        .img-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border2); }
-        .file-icon { font-size: 24px; }
-        .file-name { font-size: 12px; color: var(--text2); }
+        .file-preview-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .img-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border2); flex-shrink: 0; }
+        .file-icon { font-size: 22px; flex-shrink: 0; }
+        .file-name { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .remove-file-btn {
           background: none; border: none; color: var(--text3); cursor: pointer;
-          font-size: 16px; padding: 4px 8px; border-radius: 4px;
+          font-size: 16px; padding: 4px 8px; border-radius: 4px; flex-shrink: 0;
         }
-        .remove-file-btn:hover { color: var(--red); }
+
+        /* TYPING */
         .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
         .typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%,80%,100% { transform: scale(0.7); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+        /* INPUT */
         .input-area {
-          padding: 16px 24px; border-top: 1px solid var(--border);
+          padding: 12px 16px; border-top: 1px solid var(--border);
           background: var(--surface); flex-shrink: 0;
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
         }
         .input-wrapper {
-          display: flex; gap: 10px; align-items: flex-end;
+          display: flex; gap: 8px; align-items: flex-end;
           background: var(--surface2); border: 1px solid var(--border2);
-          border-radius: 12px; padding: 10px 14px; transition: border-color 0.2s;
+          border-radius: 12px; padding: 8px 12px; transition: border-color 0.2s;
         }
         .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
         .attach-btn {
           background: none; border: none; cursor: pointer; font-size: 18px;
-          padding: 0 4px; opacity: 0.6; transition: opacity 0.15s; flex-shrink: 0;
+          padding: 0 2px; opacity: 0.6; transition: opacity 0.15s; flex-shrink: 0;
+          line-height: 1;
         }
-        .attach-btn:hover { opacity: 1; }
+        .attach-btn:hover, .attach-btn:active { opacity: 1; }
         .chat-input {
           flex: 1; background: transparent; border: none; outline: none;
-          color: var(--text); font-family: var(--font-mono); font-size: 13px;
-          line-height: 1.5; resize: none; max-height: 120px; min-height: 20px;
+          color: var(--text); font-family: var(--font-mono); font-size: 14px;
+          line-height: 1.5; resize: none; max-height: 100px; min-height: 20px;
         }
         .chat-input::placeholder { color: var(--text3); }
         .send-btn {
@@ -600,57 +709,101 @@ export default function MedVise() {
           width: 34px; height: 34px; display: flex; align-items: center;
           justify-content: center; cursor: pointer; color: #000; transition: all 0.15s; flex-shrink: 0;
         }
-        .send-btn:hover { background: #00e0aa; transform: scale(1.05); }
+        .send-btn:hover { background: #00e0aa; }
+        .send-btn:active { transform: scale(0.95); }
         .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-        .input-meta { display: flex; justify-content: space-between; margin-top: 6px; }
-        .input-hint { font-size: 10px; color: var(--text3); }
-        .usmle-btn {
-          padding: 2px 10px; border-radius: 4px; border: 1px solid var(--border2);
-          background: none; color: var(--text3); font-family: var(--font-mono);
-          font-size: 10px; cursor: pointer; transition: all 0.15s;
+        .input-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+        .input-hint { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+        .usmle-inline-btn {
+          background: none; border: 1px solid var(--border2); border-radius: 4px;
+          color: var(--text3); font-family: var(--font-mono); font-size: 10px;
+          padding: 1px 6px; cursor: pointer; transition: all 0.15s;
         }
-        .usmle-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .usmle-inline-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .specialty-indicator {
+          font-size: 10px; color: var(--accent); cursor: pointer;
+          padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent2);
+          background: var(--accent-glow); white-space: nowrap;
+        }
+
+        /* SETTINGS */
         .settings-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-          display: flex; align-items: center; justify-content: center; z-index: 100;
+          display: flex; align-items: flex-end; justify-content: center; z-index: 200;
         }
         .settings-panel {
           background: var(--surface); border: 1px solid var(--border2);
-          border-radius: 16px; padding: 28px; width: 380px; max-width: 90vw;
+          border-radius: 16px 16px 0 0; padding: 20px; width: 100%; max-width: 500px;
+          max-height: 85vh; overflow-y: auto;
+          padding-bottom: max(20px, env(safe-area-inset-bottom));
         }
-        .settings-title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
+        .settings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .settings-title { font-family: var(--font-serif); font-size: 22px; }
+        .settings-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 20px; padding: 4px; }
         .setting-row {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 14px 0; border-bottom: 1px solid var(--border);
+          padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
         }
         .setting-label { font-size: 13px; color: var(--text); margin-bottom: 2px; }
         .setting-sub { font-size: 10px; color: var(--text3); }
         .toggle {
-          width: 40px; height: 22px; border-radius: 11px; border: none;
+          width: 44px; height: 24px; border-radius: 12px; border: none;
           cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
         }
         .toggle.on { background: var(--accent); }
         .toggle.off { background: var(--border2); }
         .toggle::after {
-          content: ''; position: absolute; width: 16px; height: 16px;
+          content: ''; position: absolute; width: 18px; height: 18px;
           border-radius: 50%; background: white; top: 3px; transition: left 0.2s;
         }
-        .toggle.on::after { left: 21px; }
+        .toggle.on::after { left: 23px; }
         .toggle.off::after { left: 3px; }
-        .depth-btns { display: flex; gap: 6px; }
+        .depth-btns { display: flex; gap: 6px; flex-wrap: wrap; }
         .depth-btn {
-          padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border2);
+          padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border2);
           background: none; color: var(--text3); font-family: var(--font-mono);
-          font-size: 10px; cursor: pointer; transition: all 0.15s;
+          font-size: 11px; cursor: pointer; transition: all 0.15s;
         }
         .depth-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
         .close-settings-btn {
-          width: 100%; margin-top: 20px; padding: 10px; border-radius: 8px;
+          width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px;
           border: 1px solid var(--border2); background: none; color: var(--text2);
-          font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all 0.15s;
+          font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: all 0.15s;
         }
         .close-settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* RTL */
         .rtl { direction: rtl; text-align: right; }
+
+        /* ── MOBILE STYLES ── */
+        @media (max-width: 768px) {
+          .sidebar-overlay { display: block; }
+
+          .left-sidebar {
+            position: fixed; top: 0; left: 0; bottom: 0;
+            width: 300px; z-index: 100;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            border-right: 1px solid var(--border2);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+          }
+          .left-sidebar.open { transform: translateX(0); }
+          .sidebar-top { display: flex; }
+
+          .message-bubble { max-width: 88%; }
+          .chat-area { padding: 12px; }
+          .logo-name { font-size: 18px; }
+          .empty-title { font-size: 22px; }
+          .settings-panel { border-radius: 16px 16px 0 0; }
+        }
+
+        @media (max-width: 480px) {
+          .message-bubble { max-width: 92%; padding: 10px 12px; }
+          .lang-btn { padding: 3px 5px; font-size: 9px; }
+          .empty-title { font-size: 20px; }
+          .empty-sub { font-size: 12px; }
+          .quick-chip { font-size: 10px; padding: 6px 10px; }
+        }
       `}</style>
     </div>
   );
