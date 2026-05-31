@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import Flashcard from "../components/Flashcard";
 
 const SPECIALTIES = [
   "General", "Cardiology", "Neurology", "Pharmacology",
@@ -43,7 +44,7 @@ You provide:
 - Clinical guidelines (ACC/AHA, WHO, UpToDate-style)
 ${settings.usmlMode ? "- USMLE-style vignette questions with answer explanations" : ""}
 ${settings.clinicalPearls ? "- Always end responses with a ⭐ Clinical Pearl" : ""}
-${settings.flashcards ? "- Always end responses with a 📇 Flashcard Summary in this format:\n  FRONT: [key concept]\n  BACK: [concise answer]" : ""}
+${settings.flashcards ? "Structure your response with these exact ## section headers where relevant: ## Definition, ## Pathogenesis, ## Types, ## Signs & Symptoms, ## Diagnosis, ## Management, ## Complications, ## Clinical Pearl" : ""}
 
 Structure answers clearly:
 1. Direct answer first
@@ -78,18 +79,27 @@ function TypingIndicator() {
   );
 }
 
-function MessageBlock({ msg }) {
+function MessageBlock({ msg, showFlashcard }) {
   const isUser = msg.role === "user";
   return (
     <div className={`message-row ${isUser ? "user-row" : "ai-row"}`}>
       {!isUser && <div className="avatar ai-avatar">✦</div>}
-      <div className={`message-bubble ${isUser ? "user-bubble" : "ai-bubble"}`}>
-        {isUser
-          ? <p>{msg.content}</p>
-          : <div className="ai-content" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
-        }
-        {msg.specialty && !isUser && (
-          <span className="specialty-tag">{msg.specialty}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className={`message-bubble ${isUser ? "user-bubble" : "ai-bubble"}`}>
+          {isUser
+            ? <p>{msg.content}</p>
+            : <div className="ai-content"
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+          }
+          {msg.fileInfo && (
+            <div className="file-tag">📎 {msg.fileInfo}</div>
+          )}
+          {msg.specialty && !isUser && (
+            <span className="specialty-tag">{msg.specialty}</span>
+          )}
+        </div>
+        {!isUser && showFlashcard && (
+          <Flashcard text={msg.content} specialty={msg.specialty || "General"} />
         )}
       </div>
       {isUser && <div className="avatar user-avatar">U</div>}
@@ -567,7 +577,13 @@ export default function CliniqAI() {
                   </div>
                 </div>
               ) : (
-                messages.map((msg, i) => <MessageBlock key={i} msg={msg} />)
+                messages.map((msg, i) => (
+                <MessageBlock
+                  key={i}
+                  msg={msg}
+                  showFlashcard={settings.flashcards && msg.role === "assistant"}
+                />
+              ))
               )}
               {loading && (
                 <div className="message-row ai-row">
