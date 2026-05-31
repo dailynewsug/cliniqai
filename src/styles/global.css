@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&family=DM+Mono:wght@300;400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0d0f;
+  --surface: #111417;
+  --surface2: #181c20;
+  --border: #1e2428;
+  --border2: #252b30;
+  --accent: #00c896;
+  --accent2: #00a07a;
+  --accent-glow: rgba(0, 200, 150, 0.12);
+  --text: #e8ede8;
+  --text2: #8a9490;
+  --text3: #4a5450;
+  --user-bg: #0f2420;
+  --user-border: #1a3d32;
+  --font-serif: 'Crimson Pro', Georgia, serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
