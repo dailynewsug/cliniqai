@@ -40,13 +40,17 @@ app.post('/api/chat', async (req, res) => {
     });
     let aiText = response.choices[0]?.message?.content || 'No response.';
 
-    // Strip any text-based flashcard the AI writes — we handle this visually
-    aiText = aiText.replace(/📇[\s\S]*?(?=\n\n|\n##|$)/g, '');
-    aiText = aiText.replace(/Flashcard:[\s\S]*?(?=\n\n|\n##|$)/gi, '');
-    aiText = aiText.replace(/FRONT:.*?BACK:.*?(?=\n\n|$)/gis, '');
-    aiText = aiText.replace(/\*\*Flashcard\*\*:[\s\S]*?(?=\n\n|\n##|$)/g, '');
+    // Only remove the specific flashcard line — nothing else
+    aiText = aiText.replace(/^.*FRONT:.*BACK:.*$/gim, '');
+    aiText = aiText.replace(/^📇.*$/gim, '');
+    aiText = aiText.trim();
 
-    res.json({ content: [{ type: 'text', text: aiText.trim() }] });
+    // Safety check — if response is too short something went wrong
+    if (!aiText || aiText.length < 20) {
+      aiText = response.choices[0]?.message?.content || 'No response.';
+    }
+
+    res.json({ content: [{ type: 'text', text: aiText }] });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Server error' });
