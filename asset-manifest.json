@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/cliniqai/static/css/main.2319d807.css",
-    "main.js": "/cliniqai/static/js/main.227e55a3.js",
-    "index.html": "/cliniqai/index.html",
-    "main.2319d807.css.map": "/cliniqai/static/css/main.2319d807.css.map",
-    "main.227e55a3.js.map": "/cliniqai/static/js/main.227e55a3.js.map"
+    "main.css": "/static/css/main.2319d807.css",
+    "main.js": "/static/js/main.227e55a3.js",
+    "index.html": "/index.html",
+    "main.2319d807.css.map": "/static/css/main.2319d807.css.map",
+    "main.227e55a3.js.map": "/static/js/main.227e55a3.js.map"
   },
   "entrypoints": [
     "static/css/main.2319d807.css",
