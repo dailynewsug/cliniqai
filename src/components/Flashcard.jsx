@@ -1,82 +1,137 @@
 import { useState } from "react";
 
 const SECTION_CONFIG = [
-  { keys: ["definition", "overview", "introduction"], label: "Definition", icon: "📖", color: "#0d2235" },
-  { keys: ["pathogenesis", "pathophysiology", "mechanism"], label: "Pathogenesis", icon: "🔬", color: "#1a1a35" },
-  { keys: ["types", "phenotypes", "classification"], label: "Types", icon: "📊", color: "#1a0d35" },
-  { keys: ["signs", "symptoms", "clinical features", "presentation"], label: "Signs & Symptoms", icon: "🩺", color: "#0d2a1a" },
-  { keys: ["diagnosis", "investigations", "workup"], label: "Diagnosis", icon: "🧪", color: "#2a1a0d" },
-  { keys: ["management", "treatment", "therapy"], label: "Management", icon: "💊", color: "#0d2a2a" },
-  { keys: ["complications", "prognosis"], label: "Complications", icon: "⚠️", color: "#2a0d0d" },
-  { keys: ["pearl", "key point", "remember", "note"], label: "Clinical Pearl", icon: "⭐", color: "#1a2a0d" },
+  { keys: ["definition", "overview", "what is", "introduction"], label: "Definition", icon: "📖", color: "#0d2235" },
+  { keys: ["pathogenesis", "pathophysiology", "mechanism", "etiology", "cause"], label: "Pathogenesis", icon: "🔬", color: "#1a1a35" },
+  { keys: ["types", "phenotypes", "classification", "stages"], label: "Types", icon: "📊", color: "#1a0d35" },
+  { keys: ["signs", "symptoms", "clinical", "presentation", "features"], label: "Signs & Symptoms", icon: "🩺", color: "#0d2a1a" },
+  { keys: ["diagnosis", "investigations", "workup", "test"], label: "Diagnosis", icon: "🧪", color: "#2a1a0d" },
+  { keys: ["management", "treatment", "therapy", "drug", "medication"], label: "Management", icon: "💊", color: "#0d2a2a" },
+  { keys: ["complication", "prognosis", "outcome"], label: "Complications", icon: "⚠️", color: "#2a0d0d" },
+  { keys: ["pearl", "key point", "remember", "tip", "note", "important"], label: "Clinical Pearl", icon: "⭐", color: "#1a2a0d" },
 ];
 
 function parseResponse(text) {
-  const lines = text.split('\n');
+  if (!text || text.length < 20) return { title: "", sections: [] };
+
+  const lines = text.split('\n').filter(l => l.trim());
   let title = "";
   const sections = [];
   let currentSection = null;
   let currentContent = [];
 
+  // Try to find title from first ## header
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Detect ## headers
-    const headerMatch = trimmed.match(/^##\s+(.+)$/);
-    if (headerMatch) {
-      // Save previous section
-      if (currentSection) {
-        sections.push({ ...currentSection, content: currentContent.filter(Boolean) });
-      }
-
-      const headerText = headerMatch[1].replace(/\*\*/g, '').toLowerCase().trim();
-
-      // Set title from first header if no title yet
-      if (!title) title = headerMatch[1].replace(/\*\*/g, '').trim();
-
-      // Match to section config
-      const matched = SECTION_CONFIG.find(sc =>
-        sc.keys.some(k => headerText.includes(k))
-      );
-
-      if (matched) {
-        currentSection = { ...matched };
-        currentContent = [];
-      } else {
-        currentSection = {
-          keys: [],
-          label: headerMatch[1].replace(/\*\*/g, '').trim(),
-          icon: "📋",
-          color: "#1a2a2a"
-        };
-        currentContent = [];
-      }
-    } else if (currentSection) {
-      // Collect bullet points
-      const bulletMatch = trimmed.match(/^[-•*]\s+(.+)$/);
-      if (bulletMatch) {
-        const point = bulletMatch[1].replace(/\*\*/g, '').trim();
-        if (point) currentContent.push(point);
-      } else if (!trimmed.startsWith('#') && trimmed.length > 10) {
-        const clean = trimmed.replace(/\*\*/g, '').trim();
-        if (clean) currentContent.push(clean);
-      }
-    } else if (!title && trimmed.length > 3) {
-      // Use first non-empty line as title fallback
-      title = trimmed.replace(/\*\*/g, '').replace(/^#+\s*/, '').trim().slice(0, 60);
+    const h = line.match(/^##?\s+(.+)$/);
+    if (h) {
+      title = h[1].replace(/\*\*/g, '').trim();
+      break;
     }
   }
 
-  // Save last section
-  if (currentSection && currentContent.length > 0) {
-    sections.push({ ...currentSection, content: currentContent.filter(Boolean) });
+  // If no title found use first meaningful line
+  if (!title) {
+    title = lines[0]?.replace(/[*#]/g, '').trim().slice(0, 60) || "Medical Summary";
   }
 
-  return {
-    title: title || "Medical Summary",
-    sections: sections.slice(0, 8)
+  const saveSection = () => {
+    if (currentSection && currentContent.length > 0) {
+      sections.push({ ...currentSection, content: [...currentContent] });
+    }
   };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const cleanLine = trimmed.replace(/^##?\s*/, '').replace(/\*\*/g, '').trim();
+    const lowerLine = cleanLine.toLowerCase();
+
+    // Check if this line is a section header
+    const isHeader = trimmed.startsWith('#') || (
+      trimmed.endsWith(':') &&
+      trimmed.length < 40 &&
+      !trimmed.startsWith('-') &&
+      !trimmed.startsWith('•')
+    );
+
+    if (isHeader) {
+      const matched = SECTION_CONFIG.find(sc =>
+        sc.keys.some(k => lowerLine.includes(k))
+      );
+
+      if (matched) {
+        saveSection();
+        currentSection = { ...matched };
+        currentContent = [];
+        continue;
+      }
+    }
+
+    // Collect bullet points into current section
+    if (currentSection) {
+      const bulletMatch = trimmed.match(/^[-•*]\s+(.+)$/) ||
+                          trimmed.match(/^\d+\.\s+(.+)$/);
+      if (bulletMatch) {
+        const point = bulletMatch[1].replace(/\*\*/g, '').trim();
+        if (point && point.length > 3) currentContent.push(point);
+      } else if (
+        !trimmed.startsWith('#') &&
+        cleanLine.length > 10 &&
+        !cleanLine.toLowerCase().includes('disclaimer') &&
+        !cleanLine.toLowerCase().includes('educational')
+      ) {
+        currentContent.push(cleanLine);
+      }
+    }
+  }
+
+  saveSection();
+
+  // If still no sections — force-create sections from bullet points
+  if (sections.length === 0) {
+    const allBullets = lines
+      .filter(l => l.trim().match(/^[-•*]\s+/) || l.trim().match(/^\d+\.\s+/))
+      .map(l => l.replace(/^[-•*\d.]\s+/, '').replace(/\*\*/g, '').trim())
+      .filter(l => l.length > 5)
+      .slice(0, 12);
+
+    if (allBullets.length > 0) {
+      const half = Math.ceil(allBullets.length / 2);
+      sections.push({
+        label: "Key Points",
+        icon: "📋",
+        color: "#0d2235",
+        content: allBullets.slice(0, half)
+      });
+      if (allBullets.length > half) {
+        sections.push({
+          label: "Additional Points",
+          icon: "📝",
+          color: "#1a2a0d",
+          content: allBullets.slice(half)
+        });
+      }
+    }
+
+    // Last resort — split text into chunks
+    if (sections.length === 0) {
+      const chunks = text
+        .replace(/\*\*/g, '')
+        .split(/[.!?]/)
+        .filter(s => s.trim().length > 20)
+        .slice(0, 6);
+
+      if (chunks.length > 0) {
+        sections.push({
+          label: "Summary",
+          icon: "📋",
+          color: "#0d2235",
+          content: chunks.map(c => c.trim())
+        });
+      }
+    }
+  }
+
+  return { title, sections: sections.slice(0, 8) };
 }
 
 export default function Flashcard({ text, specialty }) {
@@ -86,7 +141,7 @@ export default function Flashcard({ text, specialty }) {
 
   if (!sections || sections.length === 0) return null;
 
-  const current = sections[activeSection];
+  const current = sections[activeSection] || sections[0];
 
   return (
     <div className="fc-wrapper">
@@ -95,7 +150,7 @@ export default function Flashcard({ text, specialty }) {
         <div className="fc-badge">📇 Flashcard</div>
         <div className="fc-spec">{specialty}</div>
         <button className="fc-flip" onClick={() => setFlipped(f => !f)}>
-          {flipped ? "📖 Detail" : "⚡ Quick Review"}
+          {flipped ? "📖 Detail View" : "⚡ Quick Review"}
         </button>
       </div>
 
@@ -118,7 +173,9 @@ export default function Flashcard({ text, specialty }) {
 
           {/* Content panel */}
           <div className="fc-panel" style={{ background: current?.color || "#0d2235" }}>
-            <div className="fc-panel-title">{current?.icon} {current?.label}</div>
+            <div className="fc-panel-title">
+              {current?.icon} {current?.label}
+            </div>
             <ul className="fc-bullets">
               {current?.content.slice(0, 7).map((point, i) => (
                 <li key={i}>{point}</li>
@@ -141,14 +198,17 @@ export default function Flashcard({ text, specialty }) {
         /* Quick review grid */
         <div className="fc-grid">
           {sections.map((s, i) => (
-            <div key={i} className="fc-grid-item" style={{ background: s.color }}
+            <div
+              key={i}
+              className="fc-grid-item"
+              style={{ background: s.color }}
               onClick={() => { setActiveSection(i); setFlipped(false); }}>
               <div className="fc-grid-label">{s.icon} {s.label}</div>
-              <div className="fc-grid-preview">
-                {s.content.slice(0, 2).map((p, j) => (
-                  <div key={j} className="fc-grid-point">• {p.slice(0, 50)}{p.length > 50 ? "…" : ""}</div>
-                ))}
-              </div>
+              {s.content.slice(0, 2).map((p, j) => (
+                <div key={j} className="fc-grid-point">
+                  • {p.slice(0, 55)}{p.length > 55 ? "…" : ""}
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -199,7 +259,7 @@ export default function Flashcard({ text, specialty }) {
         .fc-flip:hover { background: #00c896; color: #000; }
         .fc-title {
           font-family: 'Crimson Pro', Georgia, serif;
-          font-size: 19px;
+          font-size: 18px;
           color: #e8ede8;
           font-weight: 600;
           padding: 12px 14px 4px;
@@ -242,7 +302,6 @@ export default function Flashcard({ text, specialty }) {
           color: #00c896;
           font-weight: 600;
           margin-bottom: 10px;
-          letter-spacing: 0.5px;
         }
         .fc-bullets {
           padding-left: 16px;
@@ -261,8 +320,8 @@ export default function Flashcard({ text, specialty }) {
           padding: 10px 14px 14px;
         }
         .fc-dot {
-          width: 6px;
-          height: 6px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
           background: #1e2428;
           cursor: pointer;
@@ -283,7 +342,7 @@ export default function Flashcard({ text, specialty }) {
           transition: opacity 0.15s;
           border: 1px solid rgba(255,255,255,0.04);
         }
-        .fc-grid-item:hover { opacity: 0.85; }
+        .fc-grid-item:hover { opacity: 0.8; }
         .fc-grid-label {
           font-size: 10px;
           color: #00c896;
