@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import Flashcard from "../components/Flashcard";
 
 const SPECIALTIES = [
@@ -442,7 +443,13 @@ export default function MedVise() {
                 </div>
               </div>
             ) : (
-              messages.map((msg, i) => <MessageBlock key={i} msg={msg} />)
+messages.map((msg, i) => (
+  <MessageBlock
+    key={i}
+    msg={msg}
+    showFlashcard={settings.flashcards && msg.role === "assistant"}
+  />
+))
             )}
             {loading && (
               <div className="message-row ai-row">

@@ -139,7 +139,24 @@ export default function Flashcard({ text, specialty }) {
   const [flipped, setFlipped] = useState(false);
   const { title, sections } = parseResponse(text);
 
-  if (!sections || sections.length === 0) return null;
+  if (!sections || sections.length === 0) {
+    // Fallback — show basic flashcard with raw text
+    return (
+      <div style={{
+        marginTop: "14px",
+        background: "#0a1510",
+        border: "1px solid rgba(0,200,150,0.4)",
+        borderRadius: "14px",
+        padding: "16px",
+        fontFamily: "DM Mono, monospace"
+      }}>
+        <div style={{ color: "#00c896", fontSize: "11px", marginBottom: "10px" }}>📇 Flashcard</div>
+        <div style={{ color: "#e8ede8", fontSize: "13px", lineHeight: "1.6" }}>
+          {text.slice(0, 400)}...
+        </div>
+      </div>
+    );
+  }
 
   const current = sections[activeSection] || sections[0];
 
