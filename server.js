@@ -32,7 +32,7 @@ app.post('/api/chat', async (req, res) => {
     const { messages, system } = req.body;
 
     const response = await groq.chat.completions.create({
-      model: 'gemma2-9b-it',
+      model: 'llama-3.1-8b-instant',
       max_tokens: 1200,
       messages: [
         { role: 'system', content: system },
@@ -95,7 +95,7 @@ End with educational disclaimer.`;
         : `Scanned PDF "${fileName}" — text not extractable. Use medical knowledge based on filename and context.`;
 
       const response = await groq.chat.completions.create({
-        model: 'gemma2-9b-it',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 1200,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -137,7 +137,7 @@ End with educational disclaimer.`;
       } catch (visionError) {
         console.error('Vision error:', visionError.message);
         const fallback = await groq.chat.completions.create({
-          model: 'gemma2-9b-it',
+          model: 'llama-3.1-8b-instant',
           max_tokens: 1200,
           messages: [
             { role: 'system', content: systemPrompt },

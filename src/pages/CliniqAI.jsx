@@ -55,6 +55,9 @@ Provide evidence-based answers referencing Harrison's, Robbins, WHO/CDC guidelin
 }
 
 function formatMarkdown(text) {
+  // Hide text flashcard — visual component handles this
+  text = text.replace(/FRONT:[\s\S]*?(?=\n##|\n\n##|$)/gi, '');
+  text = text.replace(/📇[^\n]*/g, '');
   return text
     .replace(/^## (.+)$/gm, '<h3 class="md-h3">$1</h3>')
     .replace(/^### (.+)$/gm, '<h4 class="md-h4">$1</h4>')
