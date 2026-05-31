@@ -1,7 +1,7 @@
-import CliniqAI from './pages/CliniqAI';
+import MedVise from './pages/CliniqAI';
 
 function App() {
-  return <CliniqAI />;
+  return <MedVise />;
 }
 
 export default App;

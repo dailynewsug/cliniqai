@@ -29,7 +29,7 @@ function buildSystemPrompt(specialty, language, settings) {
     fr: "Respond in French.",
     sw: "Respond in Kiswahili."
   };
-  return `You are CliniqAI — an advanced clinical intelligence assistant for doctors and medical students.
+  return `You are MedVise — an advanced clinical intelligence assistant for doctors and medical students.
 Current specialty context: ${specialty}
 Depth level: ${settings.depth} — ${depthMap[settings.depth]}
 Language: ${langMap[language]}
@@ -83,7 +83,7 @@ function MessageBlock({ msg }) {
   );
 }
 
-export default function CliniqAI() {
+export default function MedVise() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -133,7 +133,7 @@ export default function CliniqAI() {
     if (!userText && !uploadedFile) return;
     if (loading) return;
 
-    const displayText = userText || (uploadedFile ? `Analyze this file: ${uploadedFile.name}` : '');
+    const displayText = userText || `Analyze this file: ${uploadedFile.name}`;
     const userMsg = {
       role: "user",
       content: displayText,
@@ -154,14 +154,14 @@ export default function CliniqAI() {
         formData.append('question', userText || 'Please analyze this medical document and provide a detailed summary.');
         formData.append('system', buildSystemPrompt(specialty, language, settings));
 
-        const res = await fetch("http://localhost:3001/api/upload", {
+        const res = await fetch("https://cliniqai-server.onrender.com/api/upload", {
           method: "POST",
           body: formData
         });
         data = await res.json();
         removeFile();
       } else {
-        const res = await fetch("http://localhost:3001/api/chat", {
+        const res = await fetch("https://cliniqai-server.onrender.com/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -258,8 +258,8 @@ export default function CliniqAI() {
       <div className="topbar">
         <div className="topbar-left">
           <div className="logo">
-            <div className="logo-icon">Cq</div>
-            <span className="logo-name">CliniqAI</span>
+            <div className="logo-icon">Mv</div>
+            <span className="logo-name">MedVise</span>
           </div>
           <span className="logo-tagline">Clinical Intelligence AI</span>
         </div>
@@ -361,7 +361,7 @@ export default function CliniqAI() {
             {messages.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">⚕</div>
-                <div className="empty-title">Ask CliniqAI anything</div>
+                <div className="empty-title">Ask MedVise anything</div>
                 <div className="empty-sub">
                   Evidence-based answers for clinicians and medical students.<br />
                   Select a specialty · look up a drug · upload a document
@@ -379,7 +379,6 @@ export default function CliniqAI() {
             <div ref={bottomRef} />
           </div>
 
-          {/* FILE PREVIEW */}
           {uploadedFile && (
             <div className="file-preview-bar">
               <div className="file-preview-info">
@@ -393,7 +392,6 @@ export default function CliniqAI() {
             </div>
           )}
 
-          {/* INPUT */}
           <div className="input-area">
             <div className="input-wrapper">
               <button className="attach-btn" onClick={() => fileRef.current?.click()}
@@ -408,7 +406,7 @@ export default function CliniqAI() {
               <textarea ref={inputRef} className="chat-input"
                 placeholder={uploadedFile
                   ? "Ask a question about this file, or press send to analyze it..."
-                  : "Ask about drugs, diseases, pathophysiology, diagnostics..."}
+                  : "Ask MedVise about drugs, diseases, pathophysiology, diagnostics..."}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => {
