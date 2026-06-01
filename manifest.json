@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "MedVise",
+  "name": "MedVise — Clinical Intelligence AI",
+  "description": "Evidence-based medical AI for doctors and medical students",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,36 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#00c896",
+  "background_color": "#0a0d0f",
+  "categories": ["medical", "health", "education"],
+  "shortcuts": [
+    {
+      "name": "Drug Lookup",
+      "short_name": "Drug DB",
+      "description": "Look up any drug",
+      "url": "/?panel=drugs",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "DDx Generator",
+      "short_name": "DDx",
+      "description": "Generate differential diagnoses",
+      "url": "/?panel=ddx",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
 }
