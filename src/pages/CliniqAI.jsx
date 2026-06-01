@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Flashcard from "../components/FlashcardGenerator";
+import InstallPrompt from "../components/InstallPrompt";
 
 const SPECIALTIES = [
   "General", "Cardiology", "Neurology", "Pharmacology",
@@ -290,8 +291,80 @@ export default function MedVise() {
 
   const isRTL = language === "ar";
 
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(() => {
+    return !localStorage.getItem('medvise-visited');
+  });
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('medvise-visited', 'true');
+    setShowInstallPrompt(false);
+  };
+
   return (
     <div className={`app ${isRTL ? "rtl" : ""}`}>
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={handleDismissInstall} />
+      )}
 
       {/* SETTINGS OVERLAY */}
       {showSettings && (
@@ -372,27 +445,6 @@ export default function MedVise() {
         <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />
       )}
 
-{/* INSTALL BANNER */}
-      {showInstallBanner && !appInstalled && (
-        <div className="install-banner">
-          <div className="install-banner-left">
-            <div className="install-icon">Mv</div>
-            <div className="install-text">
-              <div className="install-title">Install MedVise App</div>
-              <div className="install-sub">Add to home screen for quick access</div>
-            </div>
-          </div>
-          <div className="install-banner-right">
-            <button className="install-btn" onClick={handleInstall}>
-              Install
-            </button>
-            <button className="install-dismiss" onClick={() => setShowInstallBanner(false)}>
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-left">
           <button className="menu-btn" onClick={() => setShowSidebar(o => !o)}>☰</button>
