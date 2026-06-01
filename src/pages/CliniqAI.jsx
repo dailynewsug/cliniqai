@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import Flashcard from "../components/Flashcard";
+import Flashcard from "../components/FlashcardGenerator";
 
 const SPECIALTIES = [
   "General", "Cardiology", "Neurology", "Pharmacology",
