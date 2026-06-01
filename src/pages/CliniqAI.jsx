@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Flashcard from "../components/FlashcardGenerator";
 
 const SPECIALTIES = [
@@ -157,6 +157,35 @@ export default function MedVise() {
   useEffect(() => {
     fetch("https://cliniqai-server.onrender.com/").catch(() => {});
   }, []);
+  // PWA Install prompt
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => {
+      setAppInstalled(true);
+      setShowInstallBanner(false);
+    });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = useCallback(async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setAppInstalled(true);
+    }
+    setInstallPrompt(null);
+  }, [installPrompt]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -303,6 +332,34 @@ export default function MedVise() {
                 ))}
               </div>
             </div>
+{!appInstalled && (
+              <div className="setting-row">
+                <div>
+                  <div className="setting-label">📱 Install App</div>
+                  <div className="setting-sub">Add MedVise to your home screen</div>
+                </div>
+                <button
+                  className="install-settings-btn"
+                  onClick={() => {
+                    if (installPrompt) {
+                      handleInstall();
+                    } else {
+                      alert('To install: tap your browser menu → "Add to Home Screen"');
+                    }
+                    setShowSettings(false);
+                  }}>
+                  Install
+                </button>
+              </div>
+            )}
+            {appInstalled && (
+              <div className="setting-row">
+                <div>
+                  <div className="setting-label">✅ App Installed</div>
+                  <div className="setting-sub">MedVise is on your home screen</div>
+                </div>
+              </div>
+            )}
             <button className="close-settings-btn" onClick={() => setShowSettings(false)}>
               Close Settings
             </button>
@@ -315,6 +372,26 @@ export default function MedVise() {
         <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />
       )}
 
+{/* INSTALL BANNER */}
+      {showInstallBanner && !appInstalled && (
+        <div className="install-banner">
+          <div className="install-banner-left">
+            <div className="install-icon">Mv</div>
+            <div className="install-text">
+              <div className="install-title">Install MedVise App</div>
+              <div className="install-sub">Add to home screen for quick access</div>
+            </div>
+          </div>
+          <div className="install-banner-right">
+            <button className="install-btn" onClick={handleInstall}>
+              Install
+            </button>
+            <button className="install-dismiss" onClick={() => setShowInstallBanner(false)}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-left">
@@ -654,7 +731,51 @@ export default function MedVise() {
         .depth-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
         .close-settings-btn { width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px; border: 1px solid var(--border2); background: none; color: var(--text2); font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: all 0.15s; }
         .close-settings-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .rtl { direction: rtl; text-align: right; }
+/* INSTALL BANNER */
+        .install-banner {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #0a2a1f 0%, #0d3324 100%);
+          border-bottom: 1px solid rgba(0,200,150,0.3);
+          flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+          animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .install-banner-left { display: flex; align-items: center; gap: 10px; }
+        .install-icon {
+          width: 36px; height: 36px; background: var(--accent);
+          border-radius: 8px; display: flex; align-items: center;
+          justify-content: center; color: #000; font-weight: 700;
+          font-size: 12px; flex-shrink: 0;
+        }
+        .install-title { font-size: 13px; color: var(--text); font-weight: 600; }
+        .install-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+        .install-banner-right { display: flex; align-items: center; gap: 8px; }
+        .install-btn {
+          padding: 7px 18px; border-radius: 8px;
+          background: var(--accent); border: none;
+          color: #000; font-family: var(--font-mono);
+          font-size: 12px; font-weight: 700; cursor: pointer;
+          transition: all 0.15s;
+        }
+        .install-btn:hover { background: #00e0aa; transform: scale(1.03); }
+        .install-dismiss {
+          background: none; border: none; color: var(--text3);
+          cursor: pointer; font-size: 16px; padding: 4px 6px;
+          border-radius: 4px; transition: color 0.15s;
+        }
+        .install-dismiss:hover { color: var(--text); }
+        .install-settings-btn {
+          padding: 6px 16px; border-radius: 6px;
+          background: var(--accent-glow); border: 1px solid var(--accent2);
+          color: var(--accent); font-family: var(--font-mono);
+          font-size: 11px; cursor: pointer; transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .install-settings-btn:hover { background: var(--accent); color: #000; }        .rtl { direction: rtl; text-align: right; }
         @media (max-width: 768px) {
           .sidebar-overlay { display: block; }
           .left-sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 300px; z-index: 100; transform: translateX(-100%); transition: transform 0.3s ease; border-right: 1px solid var(--border2); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
